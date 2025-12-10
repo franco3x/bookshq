@@ -23,7 +23,23 @@ export function parseMyClippings(fileContent) {
         let author = 'Unknown Author';
 
         if (authorMatch) {
-            author = authorMatch[1];
+            const rawAuthor = authorMatch[1];
+
+            // Handle multiple authors (";" delimiter)
+            // Example: "Heath, Chip; Heath, Dan" -> "Chip Heath & Dan Heath"
+            const authors = rawAuthor.split(';').map(a => {
+                a = a.trim();
+                // If format is "Last, First", flip it
+                if (a.includes(',')) {
+                    const [last, first] = a.split(',').map(s => s.trim());
+                    if (last && first) {
+                        return `${first} ${last}`;
+                    }
+                }
+                return a;
+            });
+
+            author = authors.join(' & ');
             title = line1.replace(authorMatch[0], '').trim();
         }
 
