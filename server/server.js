@@ -88,6 +88,33 @@ app.get('/api/books/:id', async (req, res) => {
     }
 });
 
+app.post('/api/books/:id/read', async (req, res) => {
+    const bookId = parseInt(req.params.id);
+
+    try {
+        const book = await db.query.books.findFirst({
+            where: eq(books.id, bookId)
+        });
+
+        if (!book) return res.status(404).json({ error: 'Book not found' });
+
+        const newCount = (book.readCount || 0) + 1;
+        const now = new Date();
+
+        await db.update(books)
+            .set({
+                readCount: newCount,
+                dateLastRead: now,
+                dateFirstRead: book.readCount === 0 ? now : book.dateFirstRead
+            })
+            .where(eq(books.id, bookId));
+
+        res.json({ success: true, readCount: newCount });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.get('/api/authors', async (req, res) => {
     try {
         const allAuthors = await db.query.authors.findMany({
