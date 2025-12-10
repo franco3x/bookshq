@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { db } from './database/db';
-import { sql } from 'drizzle-orm';
+import { books, authors, highlights, userStats } from './database/schema';
+import { sql, desc, eq, asc } from 'drizzle-orm';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
