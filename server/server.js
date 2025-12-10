@@ -44,14 +44,28 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
 
 app.get('/api/books', async (req, res) => {
     try {
-        const allBooks = await db.query.books.findMany({
-            orderBy: desc(books.dateLastRead),
-            with: {
-                author: true,
-            }
-        });
-        res.json(allBooks);
+        const result = await db
+            .select({
+                book: books,
+                author: authors,
+                highlightCount: sql`count(${highlights.id})`.mapWith(Number)
+            })
+            .from(books)
+            .leftJoin(authors, eq(books.authorId, authors.id))
+            .leftJoin(highlights, eq(books.id, highlights.bookId))
+            .groupBy(books.id, authors.id)
+            .orderBy(desc(books.dateLastRead));
+
+        // Format for frontend: { ...bookFields, author: { ...authorFields }, highlightCount: 10 }
+        const formatted = result.map(row => ({
+            ...row.book,
+            author: row.author,
+            highlightCount: row.highlightCount
+        }));
+
+        res.json(formatted);
     } catch (e) {
+        console.error(e);
         res.status(500).json({ error: e.message });
     }
 });
