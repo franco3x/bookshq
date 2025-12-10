@@ -1,119 +1,157 @@
-import React, { useState } from 'react';
-import { Upload, X, Check, FileText, AlertCircle } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Upload, X, Check, AlertCircle, FileText, Loader } from 'lucide-react';
 import { api } from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ImportModal({ isOpen, onClose, onSuccess }) {
-    const [file, setFile] = useState(null);
-    const [status, setStatus] = useState('idle'); // idle, uploading, success, error
+    const [dragActive, setDragActive] = useState(false);
+    const [status, setStatus] = useState('idle'); // idle, uploading, processing, success, error
     const [result, setResult] = useState(null);
+    const [errorMsg, setErrorMsg] = useState('');
+
+    // Progress simulation
+    const [progress, setProgress] = useState(0);
+
+    const fileInputRef = useRef(null);
 
     if (!isOpen) return null;
 
-    const handleFileChange = (e) => {
-        if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0]);
-            setStatus('idle');
+    const handleDrag = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.type === "dragenter" || e.type === "dragover") {
+            setDragActive(true);
+        } else if (e.type === "dragleave") {
+            setDragActive(false);
         }
     };
 
-    const handleUpload = async () => {
-        if (!file) return;
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragActive(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+            processFile(e.dataTransfer.files[0]);
+        }
+    };
 
+    const handleChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            processFile(e.target.files[0]);
+        }
+    };
+
+    const processFile = async (file) => {
         setStatus('uploading');
+        setProgress(10);
+
+        // Simulate progress while waiting for the server
+        const interval = setInterval(() => {
+            setProgress(prev => {
+                if (prev >= 90) return 90; // Wait at 90%
+                return prev + (Math.random() * 10);
+            });
+        }, 500);
+
         try {
             const data = await api.importClippings(file);
-            setResult(data);
+            clearInterval(interval);
+            setProgress(100);
             setStatus('success');
-            if (onSuccess) onSuccess();
+            setResult(data);
+            if (onSuccess) onSuccess(data);
         } catch (error) {
-            console.error(error);
+            clearInterval(interval);
             setStatus('error');
+            setErrorMsg(error.message || 'Upload failed');
         }
+    };
+
+    const reset = () => {
+        setStatus('idle');
+        setResult(null);
+        setErrorMsg('');
+        setProgress(0);
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="w-full max-w-md bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-2xl shadow-2xl overflow-hidden"
-            >
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-[var(--bg-secondary)] border border-[var(--glass-border)] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
+
+                {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-[var(--glass-border)]">
-                    <h2 className="text-xl font-bold">Import Highlights</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-[var(--bg-tertiary)] rounded-full transition-colors">
-                        <X size={20} className="text-[var(--text-secondary)]" />
+                    <h2 className="text-xl font-bold">Import Kindle Highlights</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
+                        <X size={20} />
                     </button>
                 </div>
 
-                <div className="p-6 space-y-6">
-                    {status === 'success' ? (
-                        <div className="text-center py-6">
-                            <div className="w-16 h-16 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Check size={32} />
-                            </div>
-                            <h3 className="text-lg font-bold mb-2">Import Successful!</h3>
-                            <p className="text-[var(--text-secondary)]">{result.message}</p>
-                            <button
-                                onClick={onClose}
-                                className="mt-6 w-full py-2 bg-[var(--bg-tertiary)] hover:bg-[var(--glass-highlight)] rounded-lg font-medium transition-colors"
+                {/* Content */}
+                <div className="p-8">
+                    <AnimatePresence mode="wait">
+                        {status === 'idle' && (
+                            <motion.div
+                                key="idle"
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                                onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
+                                className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer ${dragActive ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10' : 'border-[var(--glass-border)] hover:border-[var(--text-secondary)]'}`}
+                                onClick={() => fileInputRef.current?.click()}
                             >
-                                Done
-                            </button>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="border-2 border-dashed border-[var(--glass-border)] rounded-xl p-8 text-center hover:border-[var(--accent-primary)] transition-colors cursor-pointer relative group">
-                                <input
-                                    type="file"
-                                    accept=".txt"
-                                    onChange={handleFileChange}
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                />
-                                <div className="flex flex-col items-center gap-3 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors">
-                                    {file ? (
-                                        <>
-                                            <FileText size={40} className="text-[var(--accent-primary)]" />
-                                            <span className="font-medium text-[var(--text-primary)]">{file.name}</span>
-                                            <span className="text-xs">{(file.size / 1024).toFixed(1)} KB</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Upload size={40} />
-                                            <span className="font-medium">Drop "My Clippings.txt" here</span>
-                                            <span className="text-xs">or click to browse</span>
-                                        </>
-                                    )}
+                                <input ref={fileInputRef} type="file" className="hidden" accept=".txt" onChange={handleChange} />
+                                <div className="w-16 h-16 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center mx-auto mb-4">
+                                    <FileText size={32} className="text-[var(--text-secondary)]" />
                                 </div>
-                            </div>
+                                <p className="font-medium text-lg mb-2">Drag "My Clippings.txt" here</p>
+                                <p className="text-[var(--text-muted)] text-sm">or click to browse checks</p>
+                            </motion.div>
+                        )}
 
-                            {status === 'error' && (
-                                <div className="flex items-center gap-2 text-red-400 text-sm bg-red-400/10 p-3 rounded-lg">
-                                    <AlertCircle size={16} />
-                                    <span>Import failed. Please try again.</span>
+                        {(status === 'uploading' || status === 'processing') && (
+                            <motion.div key="uploading" className="text-center py-8" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                <div className="w-16 h-16 mx-auto mb-6 relative">
+                                    <svg className="w-full h-full rotate-[-90deg]" viewBox="0 0 36 36">
+                                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--bg-tertiary)" strokeWidth="4" />
+                                        <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--accent-primary)" strokeWidth="4" strokeDasharray={`${progress}, 100`} className="transition-all duration-300 ease-out" />
+                                    </svg>
+                                    <div className="absolute inset-0 flex items-center justify-center font-bold text-sm">
+                                        {Math.round(progress)}%
+                                    </div>
                                 </div>
-                            )}
+                                <h3 className="text-lg font-bold mb-2">Processing Library...</h3>
+                                <p className="text-[var(--text-secondary)]">Optimizing your highlights database. This handles thousands of entries in seconds.</p>
+                            </motion.div>
+                        )}
 
-                            <div className="flex justify-end gap-3">
-                                <button
-                                    onClick={onClose}
-                                    className="px-4 py-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-medium transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleUpload}
-                                    disabled={!file || status === 'uploading'}
-                                    className="px-6 py-2 bg-[var(--accent-primary)] hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                                >
-                                    {status === 'uploading' ? 'Importing...' : 'Import'}
-                                </button>
-                            </div>
-                        </>
-                    )}
+                        {status === 'success' && (
+                            <motion.div key="success" className="text-center py-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                <div className="w-16 h-16 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center mx-auto mb-6">
+                                    <Check size={32} />
+                                </div>
+                                <h3 className="text-2xl font-bold mb-2">Success!</h3>
+                                <p className="text-[var(--text-secondary)] mb-6">
+                                    Created <strong className="text-white">{result.createdCount}</strong> new highlights.<br />
+                                    Skipped {result.skippedCount} duplicates.
+                                </p>
+                                <div className="flex gap-4 justify-center">
+                                    <button onClick={reset} className="px-6 py-2 rounded-lg border border-[var(--glass-border)] hover:bg-[var(--bg-tertiary)]">Import Another</button>
+                                    <button onClick={onClose} className="px-6 py-2 rounded-lg bg-[var(--accent-primary)] hover:bg-green-600 text-white shadow-lg shadow-green-900/20">Done</button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {status === 'error' && (
+                            <motion.div key="error" className="text-center py-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                                <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-6">
+                                    <AlertCircle size={32} />
+                                </div>
+                                <h3 className="text-xl font-bold mb-2">Import Failed</h3>
+                                <p className="text-red-400 mb-6">{errorMsg}</p>
+                                <button onClick={reset} className="px-6 py-2 rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-secondary)]">Try Again</button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
-            </motion.div>
+            </div>
         </div>
     );
 }
