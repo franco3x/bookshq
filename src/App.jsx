@@ -7,11 +7,9 @@ import AuthorDetail from './pages/AuthorDetail';
 import Books from './pages/Books';
 import Authors from './pages/Authors';
 import Home from './pages/Home';
-
-// Placeholder Pages
-const Highlights = () => <div className="text-2xl font-bold">Highlights</div>;
-const Stats = () => <div className="text-2xl font-bold">Stats & Gamification</div>;
-const Settings = () => <div className="text-2xl font-bold">Settings</div>;
+import Highlights from './pages/Highlights';
+import Stats from './pages/Stats';
+import Settings from './pages/Settings';
 
 function App() {
   return (

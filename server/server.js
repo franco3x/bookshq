@@ -147,16 +147,18 @@ app.get('/api/authors/:id', async (req, res) => {
 
 app.get('/api/highlights', async (req, res) => {
     try {
+        console.log('Fetching all highlights...');
         const allHighlights = await db.query.highlights.findMany({
             orderBy: desc(highlights.createdAt),
             with: {
                 book: true,
                 author: true
-            },
-            limit: 50 // Pagination later
+            }
         });
+        console.log(`Returning ${allHighlights.length} highlights`);
         res.json(allHighlights);
     } catch (e) {
+        console.error('Error fetching highlights:', e);
         res.status(500).json({ error: e.message });
     }
 });
