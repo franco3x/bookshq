@@ -9,14 +9,16 @@
   --bg-primary: #0f1115;
   --bg-secondary: #161920;
   --bg-tertiary: #1e222b;
-  
+
   --text-primary: #ffffff;
   --text-secondary: #9ca3af;
   --text-muted: #6b7280;
 
   /* Accents */
-  --accent-primary: #22c55e; /* Robinhood Green */
-  --accent-secondary: #3b82f6; /* Blue */
+  --accent-primary: #22c55e;
+  /* Robinhood Green */
+  --accent-secondary: #3b82f6;
+  /* Blue */
   --accent-purple: #8b5cf6;
   --accent-gold: #eab308;
 
@@ -38,7 +40,12 @@ body {
   min-height: 100vh;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-display);
 }
 

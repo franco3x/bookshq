@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Book as BookIcon } from 'lucide-react';
 
 export default function BookCard({ book }) {
@@ -13,7 +14,7 @@ export default function BookCard({ book }) {
     const gradient = gradients[book.title.length % gradients.length];
 
     return (
-        <div className="glass-panel rounded-xl overflow-hidden card-hover group cursor-pointer relative">
+        <Link to={`/books/${book.id}`} className="glass-panel rounded-xl overflow-hidden card-hover group cursor-pointer relative block">
             <div className={`h-48 w-full bg-gradient-to-br ${gradient} flex items-center justify-center relative overflow-hidden`}>
                 {book.coverImage ? (
                     <img src={book.coverImage} alt={book.title} className="w-full h-full object-cover" />
@@ -34,6 +35,6 @@ export default function BookCard({ book }) {
                     {book.dateLastRead && <span>Read {new Date(book.dateLastRead).getFullYear()}</span>}
                 </div>
             </div>
-        </div>
+        </Link>
     );
 }
