@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../utils/api';
 import HighlightCard from '../components/HighlightCard';
-import { Highlighter, Search, LayoutGrid, List as ListIcon, ArrowUpDown, Calendar, Book as BookIcon, User } from 'lucide-react';
+import { Highlighter, Search, LayoutGrid, List as ListIcon, ArrowUpDown, Calendar, Book as BookIcon, User, ChevronDown, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 
@@ -12,7 +12,8 @@ export default function Highlights() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('');
     const [viewMode, setViewMode] = useState('list');
-    const [sortConfig, setSortConfig] = useState({ key: 'createdAt', direction: 'desc' });
+    const [sortConfig, setSortConfig] = useState({ key: 'book', direction: 'asc' });
+    const [expandedBooks, setExpandedBooks] = useState(new Set());
 
     console.log('📊 Current highlights state:', highlights);
     console.log('⏳ Loading state:', loading);
@@ -43,6 +44,18 @@ export default function Highlights() {
             key,
             direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
         }));
+    };
+
+    const toggleBook = (bookId) => {
+        setExpandedBooks(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(bookId)) {
+                newSet.delete(bookId);
+            } else {
+                newSet.add(bookId);
+            }
+            return newSet;
+        });
     };
 
     const getSortedHighlights = () => {
@@ -80,7 +93,40 @@ export default function Highlights() {
         return sorted;
     };
 
+    // Group highlights by book
+    const groupHighlightsByBook = (highlights) => {
+        const grouped = {};
+        highlights.forEach(h => {
+            const bookId = h.book?.id || 'unknown';
+            if (!grouped[bookId]) {
+                grouped[bookId] = {
+                    book: h.book,
+                    author: h.author,
+                    highlights: []
+                };
+            }
+            grouped[bookId].highlights.push(h);
+        });
+        return Object.entries(grouped).map(([bookId, data]) => ({
+            bookId: parseInt(bookId),
+            ...data
+        }));
+    };
+
     const sortedHighlights = getSortedHighlights();
+    const groupedData = groupHighlightsByBook(sortedHighlights);
+
+    // Sort groups by book title
+    groupedData.sort((a, b) => {
+        const aVal = a.book?.title || '';
+        const bVal = b.book?.title || '';
+        if (sortConfig.key === 'book') {
+            return sortConfig.direction === 'asc'
+                ? aVal.localeCompare(bVal)
+                : bVal.localeCompare(aVal);
+        }
+        return aVal.localeCompare(bVal);
+    });
 
     return (
         <div className="space-y-6">
@@ -88,7 +134,7 @@ export default function Highlights() {
                 <div>
                     <h1 className="text-3xl font-bold font-display mb-1">All Highlights</h1>
                     <p className="text-[var(--text-secondary)]">
-                        {highlights.length} saved passages
+                        {highlights.length} saved passages from {groupedData.length} books
                     </p>
                 </div>
 
@@ -140,61 +186,89 @@ export default function Highlights() {
                             <table className="w-full text-left">
                                 <thead className="bg-[var(--bg-secondary)] text-[var(--text-secondary)] text-sm uppercase tracking-wider font-medium">
                                     <tr>
-                                        <th className="p-4 w-1/2 cursor-pointer hover:text-[var(--text-primary)] transition-colors" onClick={() => handleSort('text')}>
-                                            <div className="flex items-center gap-2">
-                                                Highlight
-                                                {sortConfig.key === 'text' && <ArrowUpDown size={14} className="text-[var(--accent-primary)]" />}
-                                            </div>
-                                        </th>
-                                        <th className="p-4 cursor-pointer hover:text-[var(--text-primary)] transition-colors" onClick={() => handleSort('book')}>
+                                        <th className="p-4 w-8"></th>
+                                        <th
+                                            className="p-4 cursor-pointer hover:text-[var(--text-primary)] transition-colors"
+                                            onClick={() => handleSort('book')}
+                                        >
                                             <div className="flex items-center gap-2">
                                                 Book
                                                 {sortConfig.key === 'book' && <ArrowUpDown size={14} className="text-[var(--accent-primary)]" />}
                                             </div>
                                         </th>
-                                        <th className="p-4 cursor-pointer hover:text-[var(--text-primary)] transition-colors" onClick={() => handleSort('author')}>
-                                            <div className="flex items-center gap-2">
-                                                Author
-                                                {sortConfig.key === 'author' && <ArrowUpDown size={14} className="text-[var(--accent-primary)]" />}
-                                            </div>
-                                        </th>
-                                        <th className="p-4 text-right cursor-pointer hover:text-[var(--text-primary)] transition-colors" onClick={() => handleSort('createdAt')}>
-                                            <div className="flex items-center justify-end gap-2">
-                                                <Calendar size={14} />
-                                                Date
-                                                {sortConfig.key === 'createdAt' && <ArrowUpDown size={14} className="text-[var(--accent-primary)]" />}
-                                            </div>
-                                        </th>
+                                        <th className="p-4">Author</th>
+                                        <th className="p-4 text-center">Highlights</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--glass-border)]">
-                                    {sortedHighlights.map(highlight => (
-                                        <tr key={highlight.id} className="group hover:bg-[var(--glass-highlight)] transition-colors">
-                                            <td className="p-4 align-top">
-                                                <p className="font-serif text-[var(--text-primary)] line-clamp-2 md:line-clamp-3 leading-relaxed">
-                                                    "{highlight.text}"
-                                                </p>
-                                            </td>
-                                            <td className="p-4 align-top">
-                                                {highlight.book ? (
-                                                    <Link to={`/books/${highlight.book.id}`} className="flex items-center gap-2 font-medium text-[var(--text-primary)] hover:text-[var(--accent-primary)] transition-colors">
+                                    {groupedData.map(group => (
+                                        <React.Fragment key={group.bookId}>
+                                            {/* Book Row */}
+                                            <tr
+                                                className="group hover:bg-[var(--glass-highlight)] transition-colors cursor-pointer"
+                                                onClick={() => toggleBook(group.bookId)}
+                                            >
+                                                <td className="p-4">
+                                                    {expandedBooks.has(group.bookId) ? (
+                                                        <ChevronDown size={16} className="text-[var(--text-muted)]" />
+                                                    ) : (
+                                                        <ChevronRight size={16} className="text-[var(--text-muted)]" />
+                                                    )}
+                                                </td>
+                                                <td className="p-4">
+                                                    <Link
+                                                        to={`/books/${group.book?.id}`}
+                                                        className="flex items-center gap-2 font-bold text-[var(--text-primary)] hover:text-[var(--accent-primary)] transition-colors"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
                                                         <BookIcon size={14} className="text-[var(--text-muted)]" />
-                                                        <span className="line-clamp-1">{highlight.book.title}</span>
+                                                        <span>{group.book?.title}</span>
                                                     </Link>
-                                                ) : <span className="text-[var(--text-muted)]">-</span>}
-                                            </td>
-                                            <td className="p-4 align-top">
-                                                {highlight.author ? (
-                                                    <Link to={`/authors/${highlight.author.id}`} className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
-                                                        <User size={14} className="text-[var(--text-muted)]" />
-                                                        <span className="line-clamp-1">{highlight.author.name}</span>
-                                                    </Link>
-                                                ) : <span className="text-[var(--text-muted)]">-</span>}
-                                            </td>
-                                            <td className="p-4 align-top text-right text-[var(--text-muted)] text-sm whitespace-nowrap">
-                                                {highlight.createdAt ? format(new Date(highlight.createdAt), 'MMM d, yyyy') : '-'}
-                                            </td>
-                                        </tr>
+                                                </td>
+                                                <td className="p-4">
+                                                    {group.author && (
+                                                        <Link
+                                                            to={`/authors/${group.author.id}`}
+                                                            className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
+                                                            <User size={14} className="text-[var(--text-muted)]" />
+                                                            <span>{group.author.name}</span>
+                                                        </Link>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--glass-border)]">
+                                                        {group.highlights.length}
+                                                    </span>
+                                                </td>
+                                            </tr>
+
+                                            {/* Highlights Rows (only if expanded) */}
+                                            {expandedBooks.has(group.bookId) && group.highlights.map(highlight => (
+                                                <tr key={highlight.id} className="bg-[var(--bg-secondary)]/30">
+                                                    <td className="p-4"></td>
+                                                    <td colSpan="3" className="p-4 pl-12">
+                                                        <div className="flex items-start gap-4">
+                                                            <div className="flex-1">
+                                                                <p className="font-serif text-[var(--text-primary)] leading-relaxed mb-2">
+                                                                    "{highlight.text}"
+                                                                </p>
+                                                                <div className="flex items-center gap-4 text-xs text-[var(--text-muted)]">
+                                                                    <span className="flex items-center gap-1">
+                                                                        <Calendar size={12} />
+                                                                        {highlight.createdAt ? format(new Date(highlight.createdAt), 'MMM d, yyyy') : '-'}
+                                                                    </span>
+                                                                    {highlight.location && (
+                                                                        <span>Location: {highlight.location}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>
