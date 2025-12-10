@@ -123,7 +123,32 @@ app.get('/api/authors', async (req, res) => {
                 books: true
             }
         });
-        res.json(allAuthors);
+
+        // For each author, fetch highlight counts for their books
+        const authorsWithCounts = await Promise.all(
+            allAuthors.map(async (author) => {
+                const booksWithHighlights = await Promise.all(
+                    author.books.map(async (book) => {
+                        const result = await db
+                            .select({ count: sql`count(*)`.mapWith(Number) })
+                            .from(highlights)
+                            .where(eq(highlights.bookId, book.id));
+
+                        return {
+                            ...book,
+                            highlightCount: result[0]?.count || 0
+                        };
+                    })
+                );
+
+                return {
+                    ...author,
+                    books: booksWithHighlights
+                };
+            })
+        );
+
+        res.json(authorsWithCounts);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
