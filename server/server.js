@@ -358,7 +358,11 @@ app.get('/api/authors/:id', async (req, res) => {
         const author = await db.query.authors.findFirst({
             where: eq(authors.id, parseInt(req.params.id)),
             with: {
-                books: true,
+                books: {
+                    with: {
+                        highlights: true
+                    }
+                },
                 highlights: true
             }
         });

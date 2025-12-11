@@ -105,7 +105,7 @@ export default function AuthorDetail() {
                                         </div>
                                         <div className="flex justify-between">
                                             <span>Books Read:</span>
-                                            <span className="font-mono text-white">{author.books?.length || 0}</span>
+                                            <span className="font-mono text-white">{author.books?.filter(b => b.readCount > 0).length || 0}</span>
                                         </div>
                                     </div>
                                     <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900/95"></div>
