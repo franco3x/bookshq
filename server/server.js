@@ -111,6 +111,7 @@ app.post('/api/books/:id/read', async (req, res) => {
 
         if (!book) return res.status(404).json({ error: 'Book not found' });
 
+        const isFirstRead = (book.readCount || 0) === 0;
         const newCount = (book.readCount || 0) + 1;
         const now = new Date();
 
@@ -118,10 +119,20 @@ app.post('/api/books/:id/read', async (req, res) => {
             .set({
                 readCount: newCount,
                 dateLastRead: now,
-                dateFirstRead: book.readCount === 0 ? now : book.dateFirstRead
+                dateFirstRead: isFirstRead ? now : book.dateFirstRead
             })
             .where(eq(books.id, bookId));
 
+        // Award XP for reading
+        const { onBookRead } = await import('./services/gamification.js');
+        const xpResult = await onBookRead(isFirstRead);
+
+        res.json({
+            success: true,
+            readCount: newCount,
+            xpAwarded: isFirstRead ? 100 : 50,
+            ...xpResult
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -143,13 +154,18 @@ app.get('/api/admin/backfill-covers', async (req, res) => {
         for (const book of booksWithoutCovers) {
             if (!book.author) continue;
 
-            const coverUrl = await fetchBookCover(book.title, book.author.name);
-            if (coverUrl) {
+            const { coverUrl, genre } = await fetchBookCover(book.title, book.author.name);
+
+            if (coverUrl || genre) {
                 await db.update(books)
-                    .set({ coverImage: coverUrl })
+                    .set({
+                        ...(coverUrl ? { coverImage: coverUrl } : {}),
+                        ...(genre ? { genre: genre } : {})
+                    })
                     .where(eq(books.id, book.id));
+
                 updatedCount++;
-                console.log(`Updated cover for "${book.title}"`);
+                console.log(`Updated details for "${book.title}" (Genre: ${genre || 'None'})`);
             }
             // Small delay to be nice to API
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -175,15 +191,18 @@ app.post('/api/books/:id/cover/fetch', async (req, res) => {
         if (!book.author) return res.status(400).json({ error: 'Book has no author' });
 
         const { fetchBookCover } = await import('./services/cover-fetcher.js');
-        const coverUrl = await fetchBookCover(book.title, book.author.name);
+        const { coverUrl, genre } = await fetchBookCover(book.title, book.author.name);
 
-        if (coverUrl) {
+        if (coverUrl || genre) {
             await db.update(books)
-                .set({ coverImage: coverUrl })
+                .set({
+                    ...(coverUrl ? { coverImage: coverUrl } : {}),
+                    ...(genre ? { genre: genre } : {})
+                })
                 .where(eq(books.id, bookId));
-            res.json({ success: true, coverImage: coverUrl });
+            res.json({ success: true, coverImage: coverUrl, genre });
         } else {
-            res.status(404).json({ error: 'No cover found' });
+            res.status(404).json({ error: 'No details found' });
         }
     } catch (e) {
         res.status(500).json({ error: e.message });
@@ -240,6 +259,59 @@ app.get('/api/authors/:id', async (req, res) => {
         });
         if (!author) return res.status(404).json({ error: 'Author not found' });
         res.json(author);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Fetch and save author demographics from Wikidata
+app.post('/api/authors/:id/enrich', async (req, res) => {
+    try {
+        const authorId = parseInt(req.params.id);
+        const author = await db.query.authors.findFirst({
+            where: eq(authors.id, authorId)
+        });
+
+        if (!author) return res.status(404).json({ error: 'Author not found' });
+
+        const { fetchAuthorDemographics } = await import('./services/author-enrichment.js');
+        const demographics = await fetchAuthorDemographics(author.name);
+
+        if (demographics && Object.keys(demographics).length > 0) {
+            await db.update(authors)
+                .set(demographics)
+                .where(eq(authors.id, authorId));
+
+            res.json({ success: true, demographics });
+        } else {
+            res.status(404).json({ error: 'No demographic data found' });
+        }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Manually update author demographics
+app.patch('/api/authors/:id', async (req, res) => {
+    try {
+        const authorId = parseInt(req.params.id);
+        const { gender, race, nationality } = req.body;
+
+        // Construct update object with only provided fields
+        const updateData = {};
+        if (gender !== undefined) updateData.gender = gender;
+        if (race !== undefined) updateData.race = race;
+        if (nationality !== undefined) updateData.nationality = nationality;
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+
+        await db.update(authors)
+            .set(updateData)
+            .where(eq(authors.id, authorId));
+
+        res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

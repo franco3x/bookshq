@@ -15,17 +15,22 @@ export async function fetchBookCover(title, author) {
 
         if (data.items && data.items.length > 0) {
             const volumeInfo = data.items[0].volumeInfo;
+            const genre = volumeInfo.categories ? volumeInfo.categories[0] : null;
+
+            let coverUrl = null;
             if (volumeInfo.imageLinks) {
                 // Prefer extraLarge, large, medium, small, then thumbnail
-                return volumeInfo.imageLinks.extraLarge ||
+                coverUrl = volumeInfo.imageLinks.extraLarge ||
                     volumeInfo.imageLinks.large ||
                     volumeInfo.imageLinks.medium ||
                     volumeInfo.imageLinks.small ||
                     volumeInfo.imageLinks.thumbnail;
             }
+
+            return { coverUrl, genre };
         }
 
-        return null;
+        return { coverUrl: null, genre: null };
     } catch (error) {
         console.error(`Failed to fetch cover for "${title}":`, error.message);
         return null;

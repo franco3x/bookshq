@@ -44,6 +44,25 @@ export const api = {
         return response.json();
     },
 
+    // Author Demographics
+    fetchAuthorDemographics: async (id) => {
+        const response = await fetch(`${API_BASE}/authors/${id}/enrich`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error('Failed to enrich author data');
+        return response.json();
+    },
+
+    updateAuthorDemographics: async (id, data) => {
+        const response = await fetch(`${API_BASE}/authors/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to update author');
+        return response.json();
+    },
+
     // Highlights
     getRandomHighlight: async () => {
         const response = await fetch(`${API_BASE}/highlights/random`);
