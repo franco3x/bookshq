@@ -42,9 +42,18 @@ const LevelCard = ({ icon: Icon, title, data }) => (
     </div>
 );
 
+const TABS = [
+    { id: 'genre', label: 'Genre Mastery', icon: BookOpen },
+    { id: 'tag', label: 'Custom Tags', icon: BookOpen },
+    { id: 'nationality', label: 'Global Reach', icon: Globe },
+    { id: 'race', label: 'Diverse Voices', icon: Users },
+    { id: 'gender', label: 'Gender Representation', icon: User },
+];
+
 export default function CategoryLevels() {
     const [categories, setCategories] = useState({ genre: [], gender: [], race: [], nationality: [], tag: [] });
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState('genre');
 
     useEffect(() => {
         const load = async () => {
@@ -63,48 +72,87 @@ export default function CategoryLevels() {
 
     if (loading) return <div className="p-8">Loading dimensions...</div>;
 
+    const currentData = categories[activeTab] || [];
+    const CurrentTab = TABS.find(t => t.id === activeTab);
+
     return (
-        <div className="space-y-8">
+        <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold mb-2">Reading Dimensions 🌌</h1>
-                    <p className="text-[var(--text-secondary)]">Track your mastery across different genres, demographics, and custom tags.</p>
                 </div>
             </div>
 
-            <div className="grid gap-8">
-                <LevelCard
-                    icon={BookOpen}
-                    title="Genre Mastery"
-                    data={categories.genre}
-                />
+            {/* Tab Navigation */}
+            <div className="flex overflow-x-auto pb-2 gap-2 border-b border-[var(--glass-border)] scrollbar-hide">
+                {TABS.map((tab) => {
+                    const isActive = activeTab === tab.id;
+                    const Icon = tab.icon;
+                    return (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-4 py-3 rounded-t-lg transition-colors whitespace-nowrap border-b-2 ${isActive
+                                ? 'border-[var(--accent-primary)] text-[var(--text-primary)] bg-[var(--bg-secondary)]'
+                                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-highlight)]'
+                                }`}
+                        >
+                            <Icon size={18} className={isActive ? 'text-[var(--accent-primary)]' : ''} />
+                            <span className="font-medium">{tab.label}</span>
+                        </button>
+                    );
+                })}
+            </div>
 
-                {categories.tag && categories.tag.length > 0 && (
-                    <LevelCard
-                        icon={BookOpen}
-                        title="Custom Tags"
-                        data={categories.tag}
-                    />
-                )}
-
-                <div className="grid md:grid-cols-2 gap-8">
-                    <LevelCard
-                        icon={Globe}
-                        title="Global Reach (Nationality)"
-                        data={categories.nationality}
-                    />
-                    <LevelCard
-                        icon={Users}
-                        title="Diverse Voices (Race/Ethnicity)"
-                        data={categories.race}
-                    />
+            <div className="glass-panel p-6 rounded-b-xl rounded-tr-xl min-h-[400px]">
+                <div className="mb-6">
+                    <h2 className="text-xl font-bold flex items-center gap-2">
+                        {CurrentTab && (
+                            <>
+                                <CurrentTab.icon className="text-[var(--accent-primary)]" size={24} />
+                                {CurrentTab.label}
+                            </>
+                        )}
+                    </h2>
+                    <p className="text-[var(--text-secondary)] text-sm mt-1">
+                        {currentData.length} active {activeTab === 'nationality' ? 'countries' : activeTab === 'race' ? 'identities' : 'categories'}
+                    </p>
                 </div>
 
-                <LevelCard
-                    icon={User}
-                    title="Gender Representation"
-                    data={categories.gender}
-                />
+                {currentData.length === 0 ? (
+                    <div className="text-center py-20 opacity-50">
+                        <CurrentTab.icon size={48} className="mx-auto mb-4 text-[var(--text-muted)]" />
+                        <p className="text-lg">No data yet for this dimension.</p>
+                        <p className="text-sm">Import more books to unlock stats!</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {currentData.map((item) => (
+                            <div key={item.id} className="bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--glass-border)] relative overflow-hidden group hover:border-[var(--accent-primary)] transition-colors">
+                                <div className="relative z-10">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3 className="font-bold truncate pr-2 flex-1" title={item.categoryValue}>
+                                            {item.categoryValue}
+                                        </h3>
+                                        <span className="text-[var(--accent-gold)] font-bold text-xs bg-[var(--accent-gold)]/10 px-2 py-1 rounded shrink-0 ml-2">
+                                            Lvl {item.level}
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden mb-2">
+                                        <div
+                                            className="h-full bg-[var(--accent-primary)]"
+                                            style={{ width: `${Math.min(100, Math.max(5, (item.xp % 100)))}%` }}
+                                        />
+                                    </div>
+                                    <div className="text-xs text-[var(--text-secondary)] flex justify-between">
+                                        <span>{item.xp.toLocaleString()} XP</span>
+                                        <span>Next Lvl: {100 * Math.pow(item.level + 1, 2) - item.xp} XP</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
