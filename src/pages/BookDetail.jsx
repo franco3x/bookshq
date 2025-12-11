@@ -51,6 +51,7 @@ export default function BookDetail() {
 
     const [isEditingAuthors, setIsEditingAuthors] = useState(false);
     const [allAuthors, setAllAuthors] = useState([]);
+    const [creatingAuthor, setCreatingAuthor] = useState(false);
 
     const loadAllAuthors = async () => {
         try {
@@ -61,17 +62,60 @@ export default function BookDetail() {
         }
     };
 
+    const [newAuthorInput, setNewAuthorInput] = useState('');
+
+    const createAndAddAuthor = async (name) => {
+        if (!name) return null;
+        try {
+            setCreatingAuthor(true);
+            const newAuthor = await api.createAuthor(name);
+            // Add to local list if not present
+            if (!book.authors?.some(a => a.id === newAuthor.id)) {
+                setBook(prev => ({
+                    ...prev,
+                    authors: [...(prev.authors || []), newAuthor]
+                }));
+            }
+            // Also add to allAuthors dropdown for future
+            setAllAuthors(prev => [...prev, newAuthor]);
+            setNewAuthorInput('');
+            return newAuthor;
+        } catch (err) {
+            console.error(err);
+            alert('Failed to create author');
+            return null;
+        } finally {
+            setCreatingAuthor(false);
+        }
+    };
+
     const handleSaveAuthors = async () => {
         try {
-            const authorIds = book.authors.map(a => a.id);
-            await api.updateBook(book.id, { authorIds });
+            // Check if there is a pending new author in the input
+            if (newAuthorInput.trim()) {
+                const newAuthor = await createAndAddAuthor(newAuthorInput.trim());
+                if (!newAuthor) return; // Stop if creation failed
+                // The new author is already added to book state by createAndAddAuthor
+                // We need to wait for state update or use the new values.
+                // Since setState is async, we should manually construct the list for the API call
+                const updatedAuthors = [...(book.authors || [])];
+                if (!updatedAuthors.some(a => a.id === newAuthor.id)) {
+                    updatedAuthors.push(newAuthor);
+                }
+                const authorIds = updatedAuthors.map(a => a.id);
+                await api.updateBook(book.id, { authorIds });
+            } else {
+                const authorIds = book.authors.map(a => a.id);
+                await api.updateBook(book.id, { authorIds });
+            }
             setIsEditingAuthors(false);
-            // Optionally reload to clean up state, but local optim works fine
         } catch (error) {
             console.error('Failed to update authors:', error);
             alert('Failed to update authors');
         }
     };
+
+    // ...
 
     const handleSaveTags = async () => {
         try {
@@ -198,26 +242,15 @@ export default function BookDetail() {
                                         <div className="flex gap-2 items-center">
                                             <input
                                                 type="text"
-                                                placeholder="Or type new author name..."
-                                                className="flex-1 bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--accent-secondary)]"
+                                                value={newAuthorInput}
+                                                onChange={(e) => setNewAuthorInput(e.target.value)}
+                                                disabled={creatingAuthor}
+                                                placeholder={creatingAuthor ? "Creating..." : "Or type new author name..."}
+                                                className="flex-1 bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--accent-secondary)] disabled:opacity-50"
                                                 onKeyDown={async (e) => {
-                                                    if (e.key === 'Enter' && e.target.value.trim()) {
-                                                        try {
-                                                            const newAuthor = await api.createAuthor(e.target.value.trim());
-                                                            // Add to local list if not present
-                                                            if (!book.authors?.some(a => a.id === newAuthor.id)) {
-                                                                setBook(prev => ({
-                                                                    ...prev,
-                                                                    authors: [...(prev.authors || []), newAuthor]
-                                                                }));
-                                                            }
-                                                            // Also add to allAuthors dropdown for future
-                                                            setAllAuthors(prev => [...prev, newAuthor]);
-                                                            e.target.value = '';
-                                                        } catch (err) {
-                                                            console.error(err);
-                                                            alert('Failed to create author');
-                                                        }
+                                                    if (e.key === 'Enter' && newAuthorInput.trim()) {
+                                                        await createAndAddAuthor(newAuthorInput.trim());
+                                                        // Note: return ensures we don't submit forms if present
                                                     }
                                                 }}
                                             />
@@ -226,9 +259,10 @@ export default function BookDetail() {
                                         <div className="flex gap-2 mt-2">
                                             <button
                                                 onClick={handleSaveAuthors}
-                                                className="px-3 py-1.5 bg-[var(--accent-secondary)] text-white text-xs font-bold rounded-lg hover:brightness-110 flex-1"
+                                                disabled={creatingAuthor}
+                                                className="px-3 py-1.5 bg-[var(--accent-secondary)] text-white text-xs font-bold rounded-lg hover:brightness-110 flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                Save Changes
+                                                {creatingAuthor ? 'Wait...' : 'Save Changes'}
                                             </button>
                                             <button
                                                 onClick={() => setIsEditingAuthors(false)}
