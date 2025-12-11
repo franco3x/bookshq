@@ -416,6 +416,10 @@ app.patch('/api/authors/:id', async (req, res) => {
             .set(updateData)
             .where(eq(authors.id, authorId));
 
+        // Auto-recalculate stats in background
+        const { recalculateStats } = await import('./services/stats.js');
+        recalculateStats().catch(console.error);
+
         res.json({ success: true });
     } catch (e) {
         res.status(500).json({ error: e.message });
