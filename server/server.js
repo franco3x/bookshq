@@ -404,13 +404,17 @@ app.post('/api/authors/:id/enrich', async (req, res) => {
 app.patch('/api/authors/:id', async (req, res) => {
     try {
         const authorId = parseInt(req.params.id);
-        const { gender, race, nationality } = req.body;
+        const { gender, race, nationality, birthYear, deathYear, bio, vocation } = req.body;
 
         // Construct update object with only provided fields
         const updateData = {};
         if (gender !== undefined) updateData.gender = gender; // Text
         if (race !== undefined) updateData.race = race;       // JSONB Array
         if (nationality !== undefined) updateData.nationality = nationality; // JSONB Array
+        if (vocation !== undefined) updateData.vocation = vocation; // JSONB Array
+        if (birthYear !== undefined) updateData.birthYear = birthYear; // Integer
+        if (deathYear !== undefined) updateData.deathYear = deathYear; // Integer
+        if (bio !== undefined) updateData.bio = bio; // Text
 
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({ error: 'No fields to update' });
@@ -573,6 +577,7 @@ app.get('/api/stats/categories', async (req, res) => {
             gender: categories.filter(c => c.categoryType === 'gender'),
             race: categories.filter(c => c.categoryType === 'race'),
             nationality: categories.filter(c => c.categoryType === 'nationality'),
+            vocation: categories.filter(c => c.categoryType === 'vocation'),
         };
 
         res.json(grouped);

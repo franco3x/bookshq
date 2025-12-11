@@ -42,16 +42,29 @@ export async function fetchAuthorDemographics(authorName) {
         const countryQid = getClaimValue(claims[PROPS.COUNTRY]);
         const ethnicityQid = getClaimValue(claims[PROPS.ETHNICITY]);
 
-        const idsToResolve = [genderQid, countryQid, ethnicityQid].filter(id => id);
+        // Fetch birth/death years (these are time values, not QIDs)
+        const birthYear = getYearFromClaim(claims['P569']);
+        const deathYear = getYearFromClaim(claims['P570']);
 
-        if (idsToResolve.length === 0) return {};
+        // Fetch occupations (P106) - can be multiple
+        const occupationQids = getClaimValues(claims['P106']);
+
+        const idsToResolve = [genderQid, countryQid, ethnicityQid, ...occupationQids].filter(id => id);
+
+        if (idsToResolve.length === 0 && !birthYear && !deathYear) return {};
 
         const labels = await resolveLabels(idsToResolve, headers);
+
+        // Map occupation QIDs to labels
+        const vocations = occupationQids.map(qid => labels[qid]).filter(Boolean);
 
         return {
             gender: labels[genderQid] || null,
             nationality: labels[countryQid] || null,
-            race: labels[ethnicityQid] || null
+            race: labels[ethnicityQid] || null,
+            birthYear: birthYear || null,
+            deathYear: deathYear || null,
+            vocation: vocations.length > 0 ? vocations : null
         };
 
     } catch (error) {
@@ -65,6 +78,29 @@ function getClaimValue(claim) {
     // Return the main snak's datavalue ID
     try {
         return claim[0].mainsnak.datavalue.value.id;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Get multiple claim values (for properties that can have multiple values)
+function getClaimValues(claim) {
+    if (!claim || claim.length === 0) return [];
+    try {
+        return claim.map(c => c.mainsnak?.datavalue?.value?.id).filter(Boolean);
+    } catch (e) {
+        return [];
+    }
+}
+
+// Extract year from Wikidata time value
+function getYearFromClaim(claim) {
+    if (!claim || claim.length === 0) return null;
+    try {
+        const timeValue = claim[0].mainsnak.datavalue.value.time;
+        // Time format: "+1963-09-03T00:00:00Z"
+        const match = timeValue.match(/^[+-](\d+)-/);
+        return match ? parseInt(match[1]) : null;
     } catch (e) {
         return null;
     }

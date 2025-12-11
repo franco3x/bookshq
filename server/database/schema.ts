@@ -10,6 +10,7 @@ export const authors = pgTable('authors', {
     gender: text('gender'),
     race: jsonb('race').default([]), // Changed from text to jsonb array
     nationality: jsonb('nationality').default([]), // Changed from text to jsonb array
+    vocation: jsonb('vocation').default([]), // Array of occupations/professions
     bio: text('bio'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });

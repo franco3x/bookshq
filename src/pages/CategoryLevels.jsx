@@ -47,11 +47,12 @@ const TABS = [
     { id: 'tag', label: 'Custom Tags', icon: BookOpen },
     { id: 'nationality', label: 'Global Reach', icon: Globe },
     { id: 'race', label: 'Diverse Voices', icon: Users },
+    { id: 'vocation', label: 'Vocations', icon: Users },
     { id: 'gender', label: 'Gender Representation', icon: User },
 ];
 
 export default function CategoryLevels() {
-    const [categories, setCategories] = useState({ genre: [], gender: [], race: [], nationality: [], tag: [] });
+    const [categories, setCategories] = useState({ genre: [], gender: [], race: [], nationality: [], tag: [], vocation: [] });
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('genre');
 
@@ -59,8 +60,12 @@ export default function CategoryLevels() {
         const load = async () => {
             try {
                 const data = await api.getCategoryLevels();
-                // Ensure tags array exists even if backend doesn't return it yet
-                setCategories({ ...data, tag: data.tag || [] });
+                // Ensure all arrays exist even if backend doesn't return them yet
+                setCategories({
+                    ...data,
+                    tag: data.tag || [],
+                    vocation: data.vocation || []
+                });
             } catch (e) {
                 console.error(e);
             } finally {
@@ -147,6 +152,9 @@ export default function CategoryLevels() {
                                     break;
                                 case 'gender':
                                     linkTarget = `/books?gender=${encodedValue}`;
+                                    break;
+                                case 'vocation':
+                                    linkTarget = `/books?vocation=${encodedValue}`;
                                     break;
                             }
 

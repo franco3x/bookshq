@@ -104,6 +104,18 @@ export async function recalculateStats() {
                             categoryXPMap.set(key, current + bookXP);
                         }
                     }
+
+                    // Vocation (Array support)
+                    if (author.vocation) {
+                        const vocations = Array.isArray(author.vocation) ? author.vocation : [author.vocation];
+                        for (const v of vocations) {
+                            if (!v) continue;
+                            const normalized = toTitleCase(v);
+                            const key = `vocation:${normalized}`;
+                            const current = categoryXPMap.get(key) || 0;
+                            categoryXPMap.set(key, current + bookXP);
+                        }
+                    }
                 }
             } else if (book.authorId && book.author) {
                 // Legacy fallback

@@ -26,7 +26,16 @@ export default function AuthorDetail() {
 
     const [updating, setUpdating] = useState(false);
     const [editing, setEditing] = useState(false);
-    const [editForm, setEditForm] = useState({ gender: '', race: '', nationality: '' });
+    const [editForm, setEditForm] = useState({
+        gender: '',
+        race: '',
+        nationality: '',
+        vocation: '',
+        birthYear: '',
+        deathYear: '',
+        bio: ''
+    });
+    const [showBio, setShowBio] = useState(false);
 
     if (loading) return <div>Loading...</div>;
     if (!author) return <div>Author not found</div>;
@@ -80,7 +89,14 @@ export default function AuthorDetail() {
                         {author.name.split(' ').map((n, i, arr) => i === 0 || i === arr.length - 1 ? n[0] : '').join('')}
                     </div>
                     <div className="text-center md:text-left flex-1">
-                        <h1 className="text-3xl font-bold mb-2">{author.name}</h1>
+                        <h1 className="text-3xl font-bold mb-2">
+                            {author.name}
+                            {(author.birthYear || author.deathYear) && (
+                                <span className="text-lg text-[var(--text-secondary)] ml-2 font-normal">
+                                    ({author.birthYear || '?'}–{author.deathYear || ''})
+                                </span>
+                            )}
+                        </h1>
                         <div className="flex flex-wrap items-center gap-4 justify-center md:justify-start text-sm text-[var(--text-secondary)] mb-4">
                             <span className="flex items-center gap-2 bg-[var(--bg-secondary)] px-3 py-1 rounded-full border border-[var(--glass-border)]">
                                 <Book size={14} />
@@ -130,7 +146,27 @@ export default function AuthorDetail() {
                                     🌍 {race}
                                 </span>
                             ))}
+                            {author.vocation && Array.isArray(author.vocation) && author.vocation.map((voc, i) => (
+                                <span key={i} className="text-xs px-2 py-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                    💼 {voc}
+                                </span>
+                            ))}
                         </div>
+
+                        {/* Bio Section */}
+                        {author.bio && (
+                            <div className="mt-4">
+                                <button
+                                    onClick={() => setShowBio(!showBio)}
+                                    className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                                >
+                                    {showBio ? '▼' : '▶'} Biography
+                                </button>
+                                {showBio && (
+                                    <p className="text-sm text-[var(--text-secondary)] mt-2 leading-relaxed">{author.bio}</p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex flex-col gap-2">
@@ -146,7 +182,11 @@ export default function AuthorDetail() {
                                 setEditForm({
                                     gender: author.gender || '',
                                     race: Array.isArray(author.race) ? author.race.join(', ') : (author.race || ''),
-                                    nationality: Array.isArray(author.nationality) ? author.nationality.join(', ') : (author.nationality || '')
+                                    nationality: Array.isArray(author.nationality) ? author.nationality.join(', ') : (author.nationality || ''),
+                                    vocation: Array.isArray(author.vocation) ? author.vocation.join(', ') : (author.vocation || ''),
+                                    birthYear: author.birthYear || '',
+                                    deathYear: author.deathYear || '',
+                                    bio: author.bio || ''
                                 });
                                 setEditing(true);
                             }}
@@ -195,6 +235,47 @@ export default function AuthorDetail() {
                                     placeholder="e.g. African American, Black"
                                 />
                             </div>
+                            <div>
+                                <label className="block text-xs text-[var(--text-secondary)] mb-1">Vocation (comma separated)</label>
+                                <input
+                                    type="text"
+                                    className="w-full bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg p-2 text-sm outline-none focus:border-[var(--accent-primary)]"
+                                    value={editForm.vocation}
+                                    onChange={e => setEditForm({ ...editForm, vocation: e.target.value })}
+                                    placeholder="e.g. Comedian, Author, Podcaster"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs text-[var(--text-secondary)] mb-1">Birth Year</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg p-2 text-sm outline-none focus:border-[var(--accent-primary)]"
+                                        value={editForm.birthYear}
+                                        onChange={e => setEditForm({ ...editForm, birthYear: e.target.value })}
+                                        placeholder="e.g. 1963"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-[var(--text-secondary)] mb-1">Death Year</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg p-2 text-sm outline-none focus:border-[var(--accent-primary)]"
+                                        value={editForm.deathYear}
+                                        onChange={e => setEditForm({ ...editForm, deathYear: e.target.value })}
+                                        placeholder="e.g. 2024"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs text-[var(--text-secondary)] mb-1">Biography</label>
+                                <textarea
+                                    className="w-full bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg p-2 text-sm outline-none focus:border-[var(--accent-primary)] min-h-[80px]"
+                                    value={editForm.bio}
+                                    onChange={e => setEditForm({ ...editForm, bio: e.target.value })}
+                                    placeholder="Brief biography..."
+                                />
+                            </div>
                         </div>
 
                         <div className="flex gap-2 pt-2">
@@ -211,7 +292,11 @@ export default function AuthorDetail() {
                                         const payload = {
                                             gender: editForm.gender,
                                             race: editForm.race.split(',').map(s => s.trim()).filter(Boolean),
-                                            nationality: editForm.nationality.split(',').map(s => s.trim()).filter(Boolean)
+                                            nationality: editForm.nationality.split(',').map(s => s.trim()).filter(Boolean),
+                                            vocation: editForm.vocation.split(',').map(s => s.trim()).filter(Boolean),
+                                            birthYear: editForm.birthYear ? parseInt(editForm.birthYear) : null,
+                                            deathYear: editForm.deathYear ? parseInt(editForm.deathYear) : null,
+                                            bio: editForm.bio
                                         };
                                         await api.updateAuthorDemographics(id, payload);
                                         setEditing(false);
