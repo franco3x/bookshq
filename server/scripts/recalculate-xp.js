@@ -1,5 +1,5 @@
-import { db } from '../database/db.js';
-import { authors, authorLevels, books, highlights, categoryLevels, userStats } from '../database/schema.js';
+import { db } from '../database/db.ts';
+import { authors, authorLevels, books, highlights, categoryLevels, userStats } from '../database/schema.ts';
 import { eq, sql } from 'drizzle-orm';
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -84,7 +84,7 @@ async function recalculate() {
         // 3. Batched Updates - Author Levels
         console.log('💾 Saving Author Levels...');
         for (const [authorId, xp] of authorXPMap.entries()) {
-            const level = Math.floor(Math.sqrt(xp) * 0.1) + 1; // Simple sqrt curve
+            const level = Math.max(1, Math.floor(Math.sqrt(xp / 100)));
 
             await db.insert(authorLevels)
                 .values({ authorId, xp, level })
@@ -99,7 +99,7 @@ async function recalculate() {
         for (const [key, xp] of categoryXPMap.entries()) {
             const [type, ...valParts] = key.split(':');
             const value = valParts.join(':');
-            const level = Math.floor(Math.sqrt(xp) * 0.1) + 1;
+            const level = Math.max(1, Math.floor(Math.sqrt(xp / 100)));
 
             await db.insert(categoryLevels)
                 .values({ categoryType: type, categoryValue: value, xp, level })
@@ -111,7 +111,7 @@ async function recalculate() {
 
         // 5. Update User Global Stats
         console.log('💾 Updating Global Stats...');
-        const globalLevel = Math.floor(Math.sqrt(totalGlobalXP) * 0.1) + 1;
+        const globalLevel = Math.max(1, Math.floor(Math.sqrt(totalGlobalXP / 100)));
 
         // Ensure record exists
         const userStat = await db.query.userStats.findFirst();
