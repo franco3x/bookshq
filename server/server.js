@@ -99,7 +99,7 @@ app.get('/api/books/:id', async (req, res) => {
                     }
                 },
                 highlights: {
-                    orderBy: desc(highlights.location) // or location?
+                    orderBy: sql`CAST(${highlights.location} AS INTEGER) ASC`
                 }
             }
         });

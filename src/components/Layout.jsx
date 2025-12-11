@@ -29,11 +29,11 @@ export default function Layout() {
         api.getStats().then(stats => {
             if (stats && stats.totalXp) {
                 // Calculate level dynamically
-                const lvl = Math.floor(Math.sqrt(stats.totalXp / 100));
-                setUserLevel(lvl || 1);
+                const lvl = Math.max(1, Math.floor(Math.sqrt(stats.totalXp / 100)));
+                setUserLevel(lvl);
             }
         }).catch(err => console.error("Failed to load user level", err));
-    }, []);
+    }, [location.pathname]);
 
     const navItems = [
         { icon: Home, label: 'Home', path: '/' },
@@ -78,17 +78,17 @@ export default function Layout() {
                 </nav>
 
                 <div className="p-4 border-t border-[var(--glass-border)]">
-                    <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--bg-tertiary)]">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center font-bold text-xs">
+                    <NavLink to="/stats" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--bg-tertiary)] hover:bg-[var(--glass-highlight)] transition-colors group">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center font-bold text-xs group-hover:scale-110 transition-transform">
                             FC
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">Frank Coleman</p>
-                            <p className="text-xs text-[var(--text-muted)]">
+                            <p className="text-xs text-[var(--text-muted)] group-hover:text-[var(--text-primary)] transition-colors">
                                 {userLevel ? `Level ${userLevel} Reader` : 'Reader'}
                             </p>
                         </div>
-                    </div>
+                    </NavLink>
                 </div>
             </aside>
 

@@ -186,9 +186,16 @@ export default function CategoryLevels() {
                                             </div>
                                             <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden mb-2">
                                                 <div
-                                                    className="h-full bg-[var(--accent-primary)]"
+                                                    className={`h-full relative overflow-hidden ${item.level >= 25
+                                                            ? 'bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-500 shadow-[0_0_10px_rgba(234,179,8,0.3)]'
+                                                            : 'bg-[var(--accent-primary)]'
+                                                        }`}
                                                     style={{ width: `${Math.min(100, Math.max(5, (item.xp % 100)))}%` }}
-                                                />
+                                                >
+                                                    {item.level >= 35 && (
+                                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent w-full -translate-x-full animate-shimmer" />
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="text-xs text-[var(--text-secondary)] flex justify-between">
                                                 <span>{item.xp.toLocaleString()} XP</span>
