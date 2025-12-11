@@ -31,6 +31,16 @@ export const api = {
         return response.json();
     },
 
+    updateBook: async (id, data) => {
+        const response = await fetch(`${API_BASE}/books/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to update book');
+        return response.json();
+    },
+
     // Authors
     getAuthors: async () => {
         const response = await fetch(`${API_BASE}/authors`);

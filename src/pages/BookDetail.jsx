@@ -27,6 +27,9 @@ export default function BookDetail() {
     const [isEditingTags, setIsEditingTags] = useState(false);
     const [tagInput, setTagInput] = useState('');
 
+    const [isEditingGenre, setIsEditingGenre] = useState(false);
+    const [genreInput, setGenreInput] = useState('');
+
     const handleSaveTags = async () => {
         try {
             const newTags = tagInput.split(',').map(t => t.trim()).filter(Boolean);
@@ -36,6 +39,20 @@ export default function BookDetail() {
         } catch (error) {
             console.error('Failed to update tags:', error);
             alert('Failed to update tags');
+        }
+    };
+
+    const handleSaveGenre = async () => {
+        try {
+            const newGenre = genreInput.trim();
+            if (!newGenre) return;
+
+            await api.updateBook(book.id, { genre: newGenre });
+            setBook(prev => ({ ...prev, genre: newGenre }));
+            setIsEditingGenre(false);
+        } catch (error) {
+            console.error('Failed to update genre:', error);
+            alert('Failed to update genre');
         }
     };
 
@@ -142,15 +159,62 @@ export default function BookDetail() {
                                 <span>{totalHighlights} highlights</span>
                             </div>
 
-                            {book.genre && (
-                                <Link
-                                    to={`/books?genre=${encodeURIComponent(book.genre)}`}
-                                    className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 text-[var(--accent-secondary)] hover:bg-[var(--accent-secondary)]/10 hover:border-[var(--accent-secondary)]/30 transition-colors cursor-pointer"
-                                >
-                                    <BookIcon size={16} />
-                                    <span>{book.genre}</span>
-                                </Link>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {isEditingGenre ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            value={genreInput}
+                                            onChange={(e) => setGenreInput(e.target.value)}
+                                            placeholder="Enter genre"
+                                            className="bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--accent-secondary)]"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleSaveGenre();
+                                                if (e.key === 'Escape') setIsEditingGenre(false);
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleSaveGenre}
+                                            className="px-3 py-1.5 bg-[var(--accent-secondary)] text-white text-xs font-bold rounded-lg hover:brightness-110"
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            onClick={() => setIsEditingGenre(false)}
+                                            className="px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs font-medium rounded-lg hover:bg-[var(--glass-border)]"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-1">
+                                        {book.genre ? (
+                                            <Link
+                                                to={`/books?genre=${encodeURIComponent(book.genre)}`}
+                                                className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 text-[var(--accent-secondary)] hover:bg-[var(--accent-secondary)]/10 hover:border-[var(--accent-secondary)]/30 transition-colors cursor-pointer"
+                                            >
+                                                <BookIcon size={16} />
+                                                <span>{book.genre}</span>
+                                            </Link>
+                                        ) : (
+                                            <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 text-[var(--text-muted)] italic">
+                                                <span>No genre</span>
+                                            </div>
+                                        )}
+                                        <button
+                                            onClick={() => {
+                                                setGenreInput(book.genre || '');
+                                                setIsEditingGenre(true);
+                                            }}
+                                            className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors rounded-full hover:bg-[var(--glass-highlight)]"
+                                            title="Edit genre"
+                                        >
+                                            <Highlighter size={14} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
 
                             {book.dateLastRead && (
                                 <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2">

@@ -163,6 +163,30 @@ app.post('/api/books/bulk/tags', async (req, res) => {
     }
 });
 
+// Update book details (e.g., genre)
+app.patch('/api/books/:id', async (req, res) => {
+    try {
+        const bookId = parseInt(req.params.id);
+        const { genre } = req.body;
+
+        // Construct update object with only provided fields
+        const updateData = {};
+        if (genre !== undefined) updateData.genre = genre;
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ error: 'No fields to update' });
+        }
+
+        await db.update(books)
+            .set(updateData)
+            .where(eq(books.id, bookId));
+
+        res.json({ success: true, ...updateData });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Admin: Backfill covers
 app.get('/api/admin/backfill-covers', async (req, res) => {
     try {
