@@ -12,7 +12,9 @@ export async function fetchAuthorDemographics(authorName) {
     try {
         // 1. Search for author to get QID
         const searchUrl = `${WIKIDATA_API_URL}?action=wbsearchentities&search=${encodeURIComponent(authorName)}&language=en&format=json&type=item&limit=1`;
-        const searchRes = await fetch(searchUrl);
+        const headers = { 'User-Agent': 'BookTracker/1.0 (Educational Project; +http://localhost)' };
+
+        const searchRes = await fetch(searchUrl, { headers });
         const searchData = await searchRes.json();
 
         if (!searchData.search || searchData.search.length === 0) {
@@ -23,7 +25,7 @@ export async function fetchAuthorDemographics(authorName) {
 
         // 2. Fetch claims for the entity
         const claimsUrl = `${WIKIDATA_API_URL}?action=wbgetentities&ids=${qid}&props=claims&level=en&format=json`;
-        const claimsRes = await fetch(claimsUrl);
+        const claimsRes = await fetch(claimsUrl, { headers });
         const claimsData = await claimsRes.json();
 
         const entity = claimsData.entities[qid];
@@ -44,7 +46,7 @@ export async function fetchAuthorDemographics(authorName) {
 
         if (idsToResolve.length === 0) return {};
 
-        const labels = await resolveLabels(idsToResolve);
+        const labels = await resolveLabels(idsToResolve, headers);
 
         return {
             gender: labels[genderQid] || null,
@@ -68,11 +70,11 @@ function getClaimValue(claim) {
     }
 }
 
-async function resolveLabels(ids) {
+async function resolveLabels(ids, headers) {
     if (!ids.length) return {};
     const url = `${WIKIDATA_API_URL}?action=wbgetentities&ids=${ids.join('|')}&props=labels&languages=en&format=json`;
     try {
-        const res = await fetch(url);
+        const res = await fetch(url, { headers });
         const data = await res.json();
         const map = {};
         for (const id of ids) {
