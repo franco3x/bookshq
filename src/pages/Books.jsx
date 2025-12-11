@@ -141,6 +141,35 @@ export default function Books() {
                 />
             </div>
 
+            {/* Bulk Tagging Toolbar */}
+            {selectedBooks.size > 0 && (
+                <div className="glass-panel p-4 rounded-xl flex items-center gap-4 bg-[var(--accent-primary)]/10 border-[var(--accent-primary)]">
+                    <div className="text-sm font-medium">
+                        {selectedBooks.size} book{selectedBooks.size > 1 ? 's' : ''} selected
+                    </div>
+                    <input
+                        type="text"
+                        value={bulkTagInput}
+                        onChange={(e) => setBulkTagInput(e.target.value)}
+                        placeholder="Enter tags (comma-separated)"
+                        className="flex-1 bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--accent-primary)]"
+                    />
+                    <button
+                        onClick={handleBulkTag}
+                        disabled={isTagging || !bulkTagInput.trim()}
+                        className="px-4 py-2 bg-[var(--accent-primary)] text-white rounded-lg text-sm font-medium hover:bg-[var(--accent-secondary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        {isTagging ? 'Tagging...' : 'Tag Books'}
+                    </button>
+                    <button
+                        onClick={() => setSelectedBooks(new Set())}
+                        className="px-3 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    >
+                        Clear
+                    </button>
+                </div>
+            )}
+
             {loading ? (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 animate-pulse">
                     {[...Array(10)].map((_, i) => (

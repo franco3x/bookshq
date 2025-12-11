@@ -71,6 +71,18 @@ export default function BookDetail() {
                         </Link>
 
                         <div className="flex flex-wrap gap-4 pt-4">
+                            {/* Tags Display */}
+                            {book.tags && Array.isArray(book.tags) && book.tags.length > 0 && (
+                                <div className="w-full flex flex-wrap gap-2 mb-2">
+                                    {book.tags.map((tag, i) => (
+                                        <span key={i} className="px-3 py-1 text-xs font-medium bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-full flex items-center gap-1.5 text-[var(--text-secondary)]">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)]" />
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
                             <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2">
                                 <Highlighter size={16} className="text-[var(--accent-primary)]" />
                                 <span>{totalHighlights} highlights</span>
