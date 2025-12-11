@@ -47,14 +47,15 @@ const TABS = [
     { id: 'tag', label: 'Custom Tags', icon: BookOpen },
     { id: 'nationality', label: 'Global Reach', icon: Globe },
     { id: 'race', label: 'Diverse Voices', icon: Users },
-    { id: 'vocation', label: 'Vocations', icon: Users },
     { id: 'gender', label: 'Gender Representation', icon: User },
+    { id: 'vocation', label: 'Vocations', icon: Users },
 ];
 
 export default function CategoryLevels() {
     const [categories, setCategories] = useState({ genre: [], gender: [], race: [], nationality: [], tag: [], vocation: [] });
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('genre');
+    const [showAllMap, setShowAllMap] = useState({}); // Track which tabs are expanded
 
     useEffect(() => {
         const load = async () => {
@@ -79,6 +80,12 @@ export default function CategoryLevels() {
 
     const currentData = categories[activeTab] || [];
     const CurrentTab = TABS.find(t => t.id === activeTab);
+
+    // Limit to top 12 items unless "Show All" is clicked
+    const INITIAL_DISPLAY_COUNT = 12;
+    const isShowingAll = showAllMap[activeTab];
+    const displayData = isShowingAll ? currentData : currentData.slice(0, INITIAL_DISPLAY_COUNT);
+    const hasMore = currentData.length > INITIAL_DISPLAY_COUNT;
 
     return (
         <div className="space-y-6">
@@ -120,7 +127,10 @@ export default function CategoryLevels() {
                         )}
                     </h2>
                     <p className="text-[var(--text-secondary)] text-sm mt-1">
-                        {currentData.length} active {activeTab === 'nationality' ? 'countries' : activeTab === 'race' ? 'identities' : 'categories'}
+                        {isShowingAll
+                            ? `Showing all ${currentData.length}`
+                            : `Showing top ${Math.min(INITIAL_DISPLAY_COUNT, currentData.length)} of ${currentData.length}`
+                        } {activeTab === 'nationality' ? 'countries' : activeTab === 'race' ? 'identities' : 'categories'}
                     </p>
                 </div>
 
@@ -131,63 +141,80 @@ export default function CategoryLevels() {
                         <p className="text-sm">Import more books to unlock stats!</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {currentData.map((item) => {
-                            // Determine link target based on active tab
-                            let linkTarget = '/books';
-                            const encodedValue = encodeURIComponent(item.categoryValue);
+                    <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {displayData.map((item) => {
+                                // Determine link target based on active tab
+                                let linkTarget = '/books';
+                                const encodedValue = encodeURIComponent(item.categoryValue);
 
-                            switch (activeTab) {
-                                case 'genre':
-                                    linkTarget = `/books?genre=${encodedValue}`;
-                                    break;
-                                case 'tag':
-                                    linkTarget = `/books?tag=${encodedValue}`;
-                                    break;
-                                case 'nationality':
-                                    linkTarget = `/books?nationality=${encodedValue}`;
-                                    break;
-                                case 'race':
-                                    linkTarget = `/books?race=${encodedValue}`;
-                                    break;
-                                case 'gender':
-                                    linkTarget = `/books?gender=${encodedValue}`;
-                                    break;
-                                case 'vocation':
-                                    linkTarget = `/books?vocation=${encodedValue}`;
-                                    break;
-                            }
+                                switch (activeTab) {
+                                    case 'genre':
+                                        linkTarget = `/books?genre=${encodedValue}`;
+                                        break;
+                                    case 'tag':
+                                        linkTarget = `/books?tag=${encodedValue}`;
+                                        break;
+                                    case 'nationality':
+                                        linkTarget = `/books?nationality=${encodedValue}`;
+                                        break;
+                                    case 'race':
+                                        linkTarget = `/books?race=${encodedValue}`;
+                                        break;
+                                    case 'gender':
+                                        linkTarget = `/books?gender=${encodedValue}`;
+                                        break;
+                                    case 'vocation':
+                                        linkTarget = `/books?vocation=${encodedValue}`;
+                                        break;
+                                }
 
-                            return (
-                                <Link
-                                    key={item.id}
-                                    to={linkTarget}
-                                    className="block bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--glass-border)] relative overflow-hidden group hover:border-[var(--accent-primary)] transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                return (
+                                    <Link
+                                        key={item.id}
+                                        to={linkTarget}
+                                        className="block bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--glass-border)] relative overflow-hidden group hover:border-[var(--accent-primary)] transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    >
+                                        <div className="relative z-10">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <h3 className="font-bold truncate pr-2 flex-1" title={item.categoryValue}>
+                                                    {item.categoryValue}
+                                                </h3>
+                                                <span className="text-[var(--accent-gold)] font-bold text-xs bg-[var(--accent-gold)]/10 px-2 py-1 rounded shrink-0 ml-2">
+                                                    Lvl {item.level}
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden mb-2">
+                                                <div
+                                                    className="h-full bg-[var(--accent-primary)]"
+                                                    style={{ width: `${Math.min(100, Math.max(5, (item.xp % 100)))}%` }}
+                                                />
+                                            </div>
+                                            <div className="text-xs text-[var(--text-secondary)] flex justify-between">
+                                                <span>{item.xp.toLocaleString()} XP</span>
+                                                <span>Next Lvl: {100 * Math.pow(item.level + 1, 2) - item.xp} XP</span>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+
+                        {/* Show All / Show Less Button */}
+                        {hasMore && (
+                            <div className="mt-6 text-center">
+                                <button
+                                    onClick={() => setShowAllMap({ ...showAllMap, [activeTab]: !isShowingAll })}
+                                    className="px-6 py-2 bg-[var(--bg-secondary)] hover:bg-[var(--bg-tertiary)] border border-[var(--glass-border)] rounded-lg text-sm font-medium transition-colors"
                                 >
-                                    <div className="relative z-10">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h3 className="font-bold truncate pr-2 flex-1" title={item.categoryValue}>
-                                                {item.categoryValue}
-                                            </h3>
-                                            <span className="text-[var(--accent-gold)] font-bold text-xs bg-[var(--accent-gold)]/10 px-2 py-1 rounded shrink-0 ml-2">
-                                                Lvl {item.level}
-                                            </span>
-                                        </div>
-                                        <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden mb-2">
-                                            <div
-                                                className="h-full bg-[var(--accent-primary)]"
-                                                style={{ width: `${Math.min(100, Math.max(5, (item.xp % 100)))}%` }}
-                                            />
-                                        </div>
-                                        <div className="text-xs text-[var(--text-secondary)] flex justify-between">
-                                            <span>{item.xp.toLocaleString()} XP</span>
-                                            <span>Next Lvl: {100 * Math.pow(item.level + 1, 2) - item.xp} XP</span>
-                                        </div>
-                                    </div>
-                                </Link>
-                            );
-                        })}
-                    </div>
+                                    {isShowingAll
+                                        ? '▲ Show Less'
+                                        : `▼ Show All ${currentData.length} Categories`
+                                    }
+                                </button>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>
