@@ -55,8 +55,20 @@ export const userStats = pgTable('user_stats', {
     id: serial('id').primaryKey(),
     totalXp: integer('total_xp').default(0).notNull(),
     readerLevel: integer('reader_level').default(1).notNull(),
+    readerLevel: integer('reader_level').default(1).notNull(),
     updatedAt: timestamp('updated_at').defaultNow(),
 });
+
+// Author Levels (Individual author progression)
+export const authorLevels = pgTable('author_levels', {
+    id: serial('id').primaryKey(),
+    authorId: integer('author_id').references(() => authors.id).notNull(),
+    xp: integer('xp').default(0).notNull(),
+    level: integer('level').default(1).notNull(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+}, (t) => ({
+    uniqueAuthor: uniqueIndex('unique_author_level_idx').on(t.authorId),
+}));
 
 // Category Levels (Multi-dimensional levels)
 export const categoryLevels = pgTable('category_levels', {

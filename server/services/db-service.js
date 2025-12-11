@@ -234,7 +234,7 @@ export async function saveHighlights(parsedClippings) {
         }
     }
 
-    // 7. Bulk Insert Highlights (Chunked to prevent packet too large)
+    // 7. Bulk Insert Highlights (Chunked)
     const CHUNK_SIZE = 1000;
     for (let i = 0; i < highlightsToInsert.length; i += CHUNK_SIZE) {
         const chunk = highlightsToInsert.slice(i, i + CHUNK_SIZE);
@@ -242,10 +242,43 @@ export async function saveHighlights(parsedClippings) {
         createdCount += chunk.length;
     }
 
-    // Award XP
+    // Award XP with Context (Genre, Author, Demographics)
     if (createdCount > 0) {
-        const { onHighlightAdded } = await import('./gamification.js');
-        await onHighlightAdded(createdCount);
+        const { onHighlightAddedWithContext } = await import('./gamification.js');
+
+        // We need to rebuild context for the inserted highlights
+        // Since highlightsToInsert has bookId and authorId, we can look up the rest
+
+        // Optimize: Fetch all needed books and authors once
+        const usedBookIds = [...new Set(highlightsToInsert.map(h => h.bookId))];
+        const usedAuthorIds = [...new Set(highlightsToInsert.map(h => h.authorId))];
+
+        const booksData = await db.query.books.findMany({
+            where: inArray(books.id, usedBookIds),
+            columns: { id: true, genre: true }
+        });
+        const authorsData = await db.query.authors.findMany({
+            where: inArray(authors.id, usedAuthorIds),
+            columns: { id: true, gender: true, race: true, nationality: true }
+        });
+
+        const bookMap = new Map(booksData.map(b => [b.id, b]));
+        const authorMap = new Map(authorsData.map(a => [a.id, a]));
+
+        const highlightsContext = highlightsToInsert.map(h => {
+            const book = bookMap.get(h.bookId);
+            const author = authorMap.get(h.authorId);
+            return {
+                authorId: h.authorId,
+                bookId: h.bookId,
+                genre: book?.genre,
+                gender: author?.gender,
+                race: author?.race,
+                nationality: author?.nationality
+            };
+        });
+
+        await onHighlightAddedWithContext(highlightsContext);
     }
 
     return { createdCount, skippedCount };
