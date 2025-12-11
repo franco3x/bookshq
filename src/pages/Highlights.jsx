@@ -10,10 +10,12 @@ export default function Highlights() {
 
     const [highlights, setHighlights] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [filter, setFilter] = useState('');
     const [viewMode, setViewMode] = useState('list');
     const [sortConfig, setSortConfig] = useState({ key: 'book', direction: 'asc' });
     const [expandedBooks, setExpandedBooks] = useState(new Set());
+    const [pagination, setPagination] = useState({ page: 1, hasMore: false, total: 0 });
 
     console.log('📊 Current highlights state:', highlights);
     console.log('⏳ Loading state:', loading);
@@ -23,19 +25,38 @@ export default function Highlights() {
         loadHighlights();
     }, []);
 
-    const loadHighlights = async () => {
+    const loadHighlights = async (page = 1) => {
+        const isLoadingMore = page > 1;
+        if (isLoadingMore) {
+            setLoadingMore(true);
+        } else {
+            setLoading(true);
+        }
+
         try {
-            console.log('Fetching highlights from API...');
-            const data = await api.getHighlights();
-            console.log('Received data:', data);
-            console.log('Data type:', typeof data, 'Is array:', Array.isArray(data));
-            console.log('Data length:', data?.length);
-            setHighlights(data);
-            console.log('Highlights state set to:', data);
+            console.log(`Fetching highlights page ${page} from API...`);
+            const response = await api.getHighlights(page, 100); // 100 highlights per page
+            console.log('Received paginated data:', response);
+
+            // Append to existing highlights if loading more, otherwise replace
+            if (isLoadingMore) {
+                setHighlights(prev => [...prev, ...response.data]);
+            } else {
+                setHighlights(response.data);
+            }
+
+            setPagination({
+                page: response.pagination.page,
+                hasMore: response.pagination.hasMore,
+                total: response.pagination.total
+            });
+
+            console.log('Highlights state updated');
         } catch (error) {
             console.error('Error loading highlights:', error);
         } finally {
             setLoading(false);
+            setLoadingMore(false);
         }
     };
 
@@ -276,9 +297,21 @@ export default function Highlights() {
                     )}
                 </>
             ) : (
-                <div className="text-center py-20 opacity-50">
-                    <Highlighter size={48} className="mx-auto mb-4" />
-                    <p className="text-xl">No highlights found</p>
+                <div className="glass-panel p-12 rounded-xl text-center text-[var(--text-secondary)]">
+                    No highlights found. Import your Kindle clippings to get started!
+                </div>
+            )}
+
+            {/* Load More Button */}
+            {!loading && pagination.hasMore && (
+                <div className="flex justify-center mt-8">
+                    <button
+                        onClick={() => loadHighlights(pagination.page + 1)}
+                        disabled={loadingMore}
+                        className="px-6 py-3 bg-[var(--accent-primary)] text-white rounded-lg font-medium hover:bg-[var(--accent-secondary)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                        {loadingMore ? 'Loading...' : `Load More (${highlights.length}/${pagination.total})`}
+                    </button>
                 </div>
             )}
         </div>

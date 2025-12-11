@@ -81,8 +81,8 @@ export const api = {
         return response.json();
     },
 
-    getHighlights: async () => {
-        const response = await fetch(`${API_BASE}/highlights`);
+    getHighlights: async (page = 1, limit = 50) => {
+        const response = await fetch(`${API_BASE}/highlights?page=${page}&limit=${limit}`);
         if (!response.ok) throw new Error('Failed to fetch highlights');
         return response.json();
     },

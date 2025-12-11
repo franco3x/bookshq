@@ -236,6 +236,7 @@ app.post('/api/books/:id/cover/fetch', async (req, res) => {
 
 app.get('/api/authors', async (req, res) => {
     try {
+        // Fetch all authors with their books in one query
         const allAuthors = await db.query.authors.findMany({
             orderBy: authors.name,
             with: {
@@ -243,29 +244,26 @@ app.get('/api/authors', async (req, res) => {
             }
         });
 
-        // For each author, fetch highlight counts for their books
-        const authorsWithCounts = await Promise.all(
-            allAuthors.map(async (author) => {
-                const booksWithHighlights = await Promise.all(
-                    author.books.map(async (book) => {
-                        const result = await db
-                            .select({ count: sql`count(*)`.mapWith(Number) })
-                            .from(highlights)
-                            .where(eq(highlights.bookId, book.id));
-
-                        return {
-                            ...book,
-                            highlightCount: result[0]?.count || 0
-                        };
-                    })
-                );
-
-                return {
-                    ...author,
-                    books: booksWithHighlights
-                };
+        // Get ALL highlight counts for ALL books in a single query
+        const highlightCounts = await db
+            .select({
+                bookId: highlights.bookId,
+                count: sql`count(*)`.mapWith(Number)
             })
-        );
+            .from(highlights)
+            .groupBy(highlights.bookId);
+
+        // Create a lookup map for O(1) access
+        const countMap = new Map(highlightCounts.map(hc => [hc.bookId, hc.count]));
+
+        // Map the counts to authors (in-memory, super fast)
+        const authorsWithCounts = allAuthors.map(author => ({
+            ...author,
+            books: author.books.map(book => ({
+                ...book,
+                highlightCount: countMap.get(book.id) || 0
+            }))
+        }));
 
         res.json(authorsWithCounts);
     } catch (e) {
@@ -344,16 +342,43 @@ app.patch('/api/authors/:id', async (req, res) => {
 
 app.get('/api/highlights', async (req, res) => {
     try {
-        console.log('Fetching all highlights...');
+        // Pagination parameters
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = (page - 1) * limit;
+
+        console.log(`Fetching highlights page ${page} (${limit} per page)...`);
+
         const allHighlights = await db.query.highlights.findMany({
+            limit,
+            offset,
             orderBy: desc(highlights.createdAt),
             with: {
-                book: true,
-                author: true
+                book: {
+                    with: {
+                        author: true
+                    }
+                }
             }
         });
-        console.log(`Returning ${allHighlights.length} highlights`);
-        res.json(allHighlights);
+
+        // Get total count for pagination metadata
+        const [{ count }] = await db
+            .select({ count: sql`count(*)`.mapWith(Number) })
+            .from(highlights);
+
+        console.log(`Returning ${allHighlights.length} highlights (page ${page}/${Math.ceil(count / limit)})`);
+
+        res.json({
+            data: allHighlights,
+            pagination: {
+                page,
+                limit,
+                total: count,
+                totalPages: Math.ceil(count / limit),
+                hasMore: page < Math.ceil(count / limit)
+            }
+        });
     } catch (e) {
         console.error('Error fetching highlights:', e);
         res.status(500).json({ error: e.message });
