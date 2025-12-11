@@ -404,9 +404,9 @@ app.patch('/api/authors/:id', async (req, res) => {
 
         // Construct update object with only provided fields
         const updateData = {};
-        if (gender !== undefined) updateData.gender = gender;
-        if (race !== undefined) updateData.race = race;
-        if (nationality !== undefined) updateData.nationality = nationality;
+        if (gender !== undefined) updateData.gender = gender; // Text
+        if (race !== undefined) updateData.race = race;       // JSONB Array
+        if (nationality !== undefined) updateData.nationality = nationality; // JSONB Array
 
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({ error: 'No fields to update' });

@@ -86,24 +86,33 @@ async function recalculate() {
                         categoryXPMap.set(key, current + bookXP);
                     }
 
-                    // Race/Ethnicity
+                    // Race/Ethnicity (Array support)
                     if (author.race) {
-                        const normalized = toTitleCase(author.race);
-                        const key = `race:${normalized}`;
-                        const current = categoryXPMap.get(key) || 0;
-                        categoryXPMap.set(key, current + bookXP);
+                        const races = Array.isArray(author.race) ? author.race : [author.race];
+                        for (const r of races) {
+                            if (!r) continue;
+                            const normalized = toTitleCase(r);
+                            const key = `race:${normalized}`;
+                            const current = categoryXPMap.get(key) || 0;
+                            categoryXPMap.set(key, current + bookXP);
+                        }
                     }
 
-                    // Nationality
+                    // Nationality (Array support)
                     if (author.nationality) {
-                        // normalize some common ones if needed, otherwise just Title Case
-                        let normalized = toTitleCase(author.nationality);
-                        if (normalized === 'American') normalized = 'United States';
-                        if (normalized === 'Usa') normalized = 'United States';
+                        const nationalities = Array.isArray(author.nationality) ? author.nationality : [author.nationality];
+                        for (const n of nationalities) {
+                            if (!n) continue;
+                            // normalize some common ones
+                            let normalized = toTitleCase(n);
+                            if (normalized === 'American') normalized = 'United States';
+                            if (normalized === 'Usa') normalized = 'United States';
+                            if (normalized === 'Uk') normalized = 'United Kingdom';
 
-                        const key = `nationality:${normalized}`;
-                        const current = categoryXPMap.get(key) || 0;
-                        categoryXPMap.set(key, current + bookXP);
+                            const key = `nationality:${normalized}`;
+                            const current = categoryXPMap.get(key) || 0;
+                            categoryXPMap.set(key, current + bookXP);
+                        }
                     }
                 }
             } else if (book.authorId && book.author) {

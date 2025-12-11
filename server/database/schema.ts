@@ -8,8 +8,8 @@ export const authors = pgTable('authors', {
     birthYear: integer('birth_year'),
     deathYear: integer('death_year'),
     gender: text('gender'),
-    race: text('race'),
-    nationality: text('nationality'),
+    race: jsonb('race').default([]), // Changed from text to jsonb array
+    nationality: jsonb('nationality').default([]), // Changed from text to jsonb array
     bio: text('bio'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });

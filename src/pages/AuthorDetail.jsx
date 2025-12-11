@@ -94,21 +94,21 @@ export default function AuthorDetail() {
 
                         {/* Demographics Badges */}
                         <div className="flex flex-wrap items-center gap-2 justify-center md:justify-start">
-                            {author.nationality && (
-                                <span className="text-xs px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                    📍 {author.nationality}
+                            {author.nationality && Array.isArray(author.nationality) && author.nationality.map((nat, i) => (
+                                <span key={i} className="text-xs px-2 py-1 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                    📍 {nat}
                                 </span>
-                            )}
+                            ))}
                             {author.gender && (
                                 <span className="text-xs px-2 py-1 rounded bg-pink-500/10 text-pink-400 border border-pink-500/20">
                                     👤 {author.gender}
                                 </span>
                             )}
-                            {author.race && (
-                                <span className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20">
-                                    🌍 {author.race}
+                            {author.race && Array.isArray(author.race) && author.race.map((race, i) => (
+                                <span key={i} className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20">
+                                    🌍 {race}
                                 </span>
-                            )}
+                            ))}
                         </div>
                     </div>
 
@@ -124,8 +124,8 @@ export default function AuthorDetail() {
                             onClick={() => {
                                 setEditForm({
                                     gender: author.gender || '',
-                                    race: author.race || '',
-                                    nationality: author.nationality || ''
+                                    race: Array.isArray(author.race) ? author.race.join(', ') : (author.race || ''),
+                                    nationality: Array.isArray(author.nationality) ? author.nationality.join(', ') : (author.nationality || '')
                                 });
                                 setEditing(true);
                             }}
@@ -145,13 +145,13 @@ export default function AuthorDetail() {
 
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-xs text-[var(--text-secondary)] mb-1">Nationality</label>
+                                <label className="block text-xs text-[var(--text-secondary)] mb-1">Nationality (comma separated)</label>
                                 <input
                                     type="text"
                                     className="w-full bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg p-2 text-sm outline-none focus:border-[var(--accent-primary)]"
                                     value={editForm.nationality}
                                     onChange={e => setEditForm({ ...editForm, nationality: e.target.value })}
-                                    placeholder="e.g. American, British..."
+                                    placeholder="e.g. American, British"
                                 />
                             </div>
                             <div>
@@ -161,17 +161,17 @@ export default function AuthorDetail() {
                                     className="w-full bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg p-2 text-sm outline-none focus:border-[var(--accent-primary)]"
                                     value={editForm.gender}
                                     onChange={e => setEditForm({ ...editForm, gender: e.target.value })}
-                                    placeholder="e.g. Female, Male..."
+                                    placeholder="e.g. Female"
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-[var(--text-secondary)] mb-1">Race/Ethnicity</label>
+                                <label className="block text-xs text-[var(--text-secondary)] mb-1">Race/Ethnicity (comma separated)</label>
                                 <input
                                     type="text"
                                     className="w-full bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg p-2 text-sm outline-none focus:border-[var(--accent-primary)]"
                                     value={editForm.race}
                                     onChange={e => setEditForm({ ...editForm, race: e.target.value })}
-                                    placeholder="e.g. African American..."
+                                    placeholder="e.g. African American, Black"
                                 />
                             </div>
                         </div>
@@ -184,7 +184,22 @@ export default function AuthorDetail() {
                                 Cancel
                             </button>
                             <button
-                                onClick={handleEditSave}
+                                onClick={async () => {
+                                    try {
+                                        // Split commas into arrays
+                                        const payload = {
+                                            gender: editForm.gender,
+                                            race: editForm.race.split(',').map(s => s.trim()).filter(Boolean),
+                                            nationality: editForm.nationality.split(',').map(s => s.trim()).filter(Boolean)
+                                        };
+                                        await api.updateAuthorDemographics(id, payload);
+                                        setEditing(false);
+                                        loadAuthor();
+                                    } catch (e) {
+                                        console.error(e);
+                                        alert('Failed to save');
+                                    }
+                                }}
                                 className="flex-1 px-4 py-2 bg-[var(--accent-primary)] text-white rounded-lg hover:bg-[var(--accent-secondary)] transition-colors"
                             >
                                 Save Changes
