@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../utils/api';
 import BookCard from '../components/BookCard';
-import { BookOpen, Search, LayoutGrid, List as ListIcon, User, Highlighter, Calendar } from 'lucide-react';
+import { Search, LayoutGrid, List as ListIcon, X, BookOpen, User, Highlighter, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Books() {
     const [books, setBooks] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState('grid');
     const [sortBy, setSortBy] = useState('dateLastRead');
     const [selectedBooks, setSelectedBooks] = useState(new Set());
+    const [searchParams, setSearchParams] = useSearchParams();
     const [bulkTagInput, setBulkTagInput] = useState('');
     const [isTagging, setIsTagging] = useState(false);
 
@@ -59,26 +61,40 @@ export default function Books() {
         }
         setSelectedBooks(newSelection);
     };
+    // Get filter params from URL
+    const tagFilter = searchParams.get('tag');
+    const genreFilter = searchParams.get('genre');
 
-    const filteredBooks = books.filter(b =>
-        b.title.toLowerCase().includes(filter.toLowerCase()) ||
-        b.author?.name.toLowerCase().includes(filter.toLowerCase())
-    ).sort((a, b) => {
-        switch (sortBy) {
-            case 'title':
-                return a.title.localeCompare(b.title);
-            case 'author':
-                return (a.author?.name || '').localeCompare(b.author?.name || '');
-            case 'highlightCount':
-                return (b.highlightCount || 0) - (a.highlightCount || 0);
-            case 'dateLastRead':
-                return new Date(b.dateLastRead || 0) - new Date(a.dateLastRead || 0);
-            default:
-                return 0;
-        }
-    });
+    // Filter and sort books
+    const filteredBooks = books
+        .filter(book => {
+            // Search query filter
+            const query = searchQuery.toLowerCase();
+            const matchesSearch = book.title.toLowerCase().includes(query) ||
+                book.author?.name.toLowerCase().includes(query);
 
-    // Reverse logic for dates/counts to be descending by default, but title/author ascending
+            // Tag filter
+            const matchesTag = !tagFilter || (book.tags && book.tags.includes(tagFilter));
+
+            // Genre filter
+            const matchesGenre = !genreFilter || book.genre === genreFilter;
+
+            return matchesSearch && matchesTag && matchesGenre;
+        })
+        .sort((a, b) => {
+            switch (sortBy) {
+                case 'title':
+                    return a.title.localeCompare(b.title);
+                case 'author':
+                    return (a.author?.name || '').localeCompare(b.author?.name || '');
+                case 'highlightCount':
+                    return (b.highlightCount || 0) - (a.highlightCount || 0);
+                case 'dateLastRead':
+                    return new Date(b.dateLastRead || 0) - new Date(a.dateLastRead || 0);
+                default:
+                    return 0;
+            }
+        });
     // Actually standard sort logic is better directly in switch above.
     // 'dateLastRead': b - a (descending, newest first)
     // 'highlightCount': b - a (descending, most first)
@@ -135,11 +151,46 @@ export default function Books() {
                 <input
                     type="text"
                     placeholder="Filter books..."
-                    value={filter}
-                    onChange={(e) => setFilter(e.target.value)}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     className="bg-transparent border-none outline-none flex-1 text-[var(--text-primary)] placeholder-[var(--text-muted)]"
                 />
             </div>
+
+            {/* Active Filters */}
+            {(tagFilter || genreFilter) && (
+                <div className="flex flex-wrap gap-2 items-center">
+                    <span className="text-sm text-[var(--text-muted)]">Filtered by:</span>
+                    {tagFilter && (
+                        <div className="px-3 py-1 bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 rounded-full flex items-center gap-2 text-sm">
+                            <span className="font-medium text-[var(--accent-primary)]">Tag: {tagFilter}</span>
+                            <button
+                                onClick={() => {
+                                    searchParams.delete('tag');
+                                    setSearchParams(searchParams);
+                                }}
+                                className="hover:bg-[var(--accent-primary)]/20 rounded-full p-0.5"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    )}
+                    {genreFilter && (
+                        <div className="px-3 py-1 bg-[var(--accent-secondary)]/10 border border-[var(--accent-secondary)]/20 rounded-full flex items-center gap-2 text-sm">
+                            <span className="font-medium text-[var(--accent-secondary)]">Genre: {genreFilter}</span>
+                            <button
+                                onClick={() => {
+                                    searchParams.delete('genre');
+                                    setSearchParams(searchParams);
+                                }}
+                                className="hover:bg-[var(--accent-secondary)]/20 rounded-full p-0.5"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Bulk Tagging Toolbar */}
             {selectedBooks.size > 0 && (

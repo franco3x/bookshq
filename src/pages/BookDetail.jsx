@@ -87,10 +87,14 @@ export default function BookDetail() {
                                 {!isEditingTags ? (
                                     <div className="flex flex-wrap gap-2 items-center">
                                         {book.tags && Array.isArray(book.tags) && book.tags.map((tag, i) => (
-                                            <span key={i} className="px-3 py-1 text-xs font-medium bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-full flex items-center gap-1.5 text-[var(--text-secondary)]">
+                                            <Link
+                                                key={i}
+                                                to={`/books?tag=${encodeURIComponent(tag)}`}
+                                                className="px-3 py-1 text-xs font-medium bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-full flex items-center gap-1.5 text-[var(--text-secondary)] hover:bg-[var(--accent-primary)]/10 hover:border-[var(--accent-primary)]/30 transition-colors cursor-pointer"
+                                            >
                                                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)]" />
                                                 {tag}
-                                            </span>
+                                            </Link>
                                         ))}
                                         <button
                                             onClick={() => {
@@ -139,10 +143,13 @@ export default function BookDetail() {
                             </div>
 
                             {book.genre && (
-                                <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 text-[var(--accent-secondary)]">
+                                <Link
+                                    to={`/books?genre=${encodeURIComponent(book.genre)}`}
+                                    className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 text-[var(--accent-secondary)] hover:bg-[var(--accent-secondary)]/10 hover:border-[var(--accent-secondary)]/30 transition-colors cursor-pointer"
+                                >
                                     <BookIcon size={16} />
                                     <span>{book.genre}</span>
-                                </div>
+                                </Link>
                             )}
 
                             {book.dateLastRead && (
