@@ -9,6 +9,7 @@ export default function Authors() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('');
     const [viewMode, setViewMode] = useState('grid');
+    const [sortBy, setSortBy] = useState('name-asc'); // name-asc, name-desc, books-desc, books-asc, highlights-desc
 
     useEffect(() => {
         loadAuthors();
@@ -29,6 +30,26 @@ export default function Authors() {
         a.name.toLowerCase().includes(filter.toLowerCase())
     );
 
+    // Sort authors based on selected option
+    const sortedAuthors = [...filteredAuthors].sort((a, b) => {
+        switch (sortBy) {
+            case 'name-asc':
+                return a.name.localeCompare(b.name);
+            case 'name-desc':
+                return b.name.localeCompare(a.name);
+            case 'books-desc':
+                return (b.books?.length || 0) - (a.books?.length || 0);
+            case 'books-asc':
+                return (a.books?.length || 0) - (b.books?.length || 0);
+            case 'highlights-desc':
+                const aHighlights = a.books?.reduce((sum, book) => sum + (book.highlightCount || 0), 0) || 0;
+                const bHighlights = b.books?.reduce((sum, book) => sum + (book.highlightCount || 0), 0) || 0;
+                return bHighlights - aHighlights;
+            default:
+                return 0;
+        }
+    });
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -39,19 +60,35 @@ export default function Authors() {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--glass-border)]">
-                    <button
-                        onClick={() => setViewMode('grid')}
-                        className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-[var(--bg-tertiary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                <div className="flex items-center gap-3">
+                    {/* Sort Dropdown */}
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--accent-primary)] transition-colors cursor-pointer"
                     >
-                        <LayoutGrid size={20} />
-                    </button>
-                    <button
-                        onClick={() => setViewMode('list')}
-                        className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-[var(--bg-tertiary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
-                    >
-                        <ListIcon size={20} />
-                    </button>
+                        <option value="name-asc">Name (A-Z)</option>
+                        <option value="name-desc">Name (Z-A)</option>
+                        <option value="books-desc">Most Books</option>
+                        <option value="books-asc">Fewest Books</option>
+                        <option value="highlights-desc">Most Highlights</option>
+                    </select>
+
+                    {/* View Mode Toggle */}
+                    <div className="flex items-center gap-3 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--glass-border)]">
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-[var(--bg-tertiary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                        >
+                            <LayoutGrid size={20} />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-[var(--bg-tertiary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                        >
+                            <ListIcon size={20} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -72,11 +109,11 @@ export default function Authors() {
                         <div key={i} className="h-24 bg-[var(--bg-tertiary)] rounded-xl" />
                     ))}
                 </div>
-            ) : filteredAuthors.length > 0 ? (
+            ) : sortedAuthors.length > 0 ? (
                 <>
                     {viewMode === 'grid' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {filteredAuthors.map(author => (
+                            {sortedAuthors.map(author => (
                                 <AuthorCard key={author.id} author={author} />
                             ))}
                         </div>
@@ -91,7 +128,7 @@ export default function Authors() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--glass-border)]">
-                                    {filteredAuthors.map(author => {
+                                    {sortedAuthors.map(author => {
                                         const totalHighlights = author.books?.reduce((sum, book) => sum + (book.highlightCount || 0), 0) || 0;
 
                                         return (
