@@ -33,6 +33,30 @@ export default function BookDetail() {
     const [isEditingDate, setIsEditingDate] = useState(false);
     const [dateInput, setDateInput] = useState('');
 
+    const [isEditingAuthors, setIsEditingAuthors] = useState(false);
+    const [allAuthors, setAllAuthors] = useState([]);
+
+    const loadAllAuthors = async () => {
+        try {
+            const authors = await api.getAuthors();
+            setAllAuthors(authors);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleSaveAuthors = async () => {
+        try {
+            const authorIds = book.authors.map(a => a.id);
+            await api.updateBook(book.id, { authorIds });
+            setIsEditingAuthors(false);
+            // Optionally reload to clean up state, but local optim works fine
+        } catch (error) {
+            console.error('Failed to update authors:', error);
+            alert('Failed to update authors');
+        }
+    };
+
     const handleSaveTags = async () => {
         try {
             const newTags = tagInput.split(',').map(t => t.trim()).filter(Boolean);
@@ -112,9 +136,125 @@ export default function BookDetail() {
 
                     <div className="flex-1 space-y-4">
                         <h1 className="text-4xl font-bold font-display leading-tight">{book.title}</h1>
-                        <Link to={`/authors/${book.author?.id}`} className="inline-flex text-xl text-[var(--text-secondary)] hover:text-[var(--accent-secondary)] transition-colors">
-                            {book.author?.name}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                            {isEditingAuthors ? (
+                                <div className="space-y-2 w-full max-w-md">
+                                    <div className="flex flex-wrap gap-2">
+                                        {book.authors?.map(author => (
+                                            <div key={author.id} className="bg-[var(--bg-secondary)] px-2 py-1 rounded flex items-center gap-2 border border-[var(--glass-border)]">
+                                                <span>{author.name}</span>
+                                                <button
+                                                    onClick={() => {
+                                                        const newAuthors = book.authors.filter(a => a.id !== author.id);
+                                                        setBook(prev => ({ ...prev, authors: newAuthors }));
+                                                    }}
+                                                    className="text-red-400 hover:text-red-300"
+                                                >
+                                                    &times;
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <div className="flex gap-2">
+                                            <select
+                                                onChange={(e) => {
+                                                    const authorId = parseInt(e.target.value);
+                                                    if (!authorId) return;
+                                                    const authorToAdd = allAuthors.find(a => a.id === authorId);
+                                                    if (authorToAdd && !book.authors?.some(a => a.id === authorId)) {
+                                                        setBook(prev => ({
+                                                            ...prev,
+                                                            authors: [...(prev.authors || []), authorToAdd]
+                                                        }));
+                                                    }
+                                                    e.target.value = '';
+                                                }}
+                                                className="bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-1.5 text-sm outline-none w-full"
+                                            >
+                                                <option value="">+ Select Existing Author...</option>
+                                                {allAuthors.map(a => (
+                                                    <option key={a.id} value={a.id}>{a.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="flex gap-2 items-center">
+                                            <input
+                                                type="text"
+                                                placeholder="Or type new author name..."
+                                                className="flex-1 bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--accent-secondary)]"
+                                                onKeyDown={async (e) => {
+                                                    if (e.key === 'Enter' && e.target.value.trim()) {
+                                                        try {
+                                                            const newAuthor = await api.createAuthor(e.target.value.trim());
+                                                            // Add to local list if not present
+                                                            if (!book.authors?.some(a => a.id === newAuthor.id)) {
+                                                                setBook(prev => ({
+                                                                    ...prev,
+                                                                    authors: [...(prev.authors || []), newAuthor]
+                                                                }));
+                                                            }
+                                                            // Also add to allAuthors dropdown for future
+                                                            setAllAuthors(prev => [...prev, newAuthor]);
+                                                            e.target.value = '';
+                                                        } catch (err) {
+                                                            console.error(err);
+                                                            alert('Failed to create author');
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="flex gap-2 mt-2">
+                                            <button
+                                                onClick={handleSaveAuthors}
+                                                className="px-3 py-1.5 bg-[var(--accent-secondary)] text-white text-xs font-bold rounded-lg hover:brightness-110 flex-1"
+                                            >
+                                                Save Changes
+                                            </button>
+                                            <button
+                                                onClick={() => setIsEditingAuthors(false)}
+                                                className="px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs font-medium rounded-lg hover:bg-[var(--glass-border)]"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="group flex items-center gap-2">
+                                    <div className="text-xl text-[var(--text-secondary)]">
+                                        {book.authors && book.authors.length > 0 ? (
+                                            book.authors.map((author, i) => (
+                                                <span key={author.id}>
+                                                    <Link
+                                                        to={`/authors/${author.id}`}
+                                                        className="hover:text-[var(--accent-secondary)] transition-colors"
+                                                    >
+                                                        {author.name}
+                                                    </Link>
+                                                    {i < book.authors.length - 1 && ", "}
+                                                </span>
+                                            ))
+                                        ) : (
+                                            <span className="italic text-[var(--text-muted)]">Unknown Author</span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            if (allAuthors.length === 0) loadAllAuthors();
+                                            setIsEditingAuthors(true);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-all rounded-full hover:bg-[var(--glass-highlight)]"
+                                        title="Edit authors"
+                                    >
+                                        <Highlighter size={14} />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
 
                         <div className="flex flex-wrap gap-4 pt-4">
                             {/* Tags Display/Edit */}
@@ -136,10 +276,16 @@ export default function BookDetail() {
                                                 setTagInput(book.tags?.join(', ') || '');
                                                 setIsEditingTags(true);
                                             }}
-                                            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors ml-1"
+                                            className={`p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors ${(!book.tags || book.tags.length === 0) ? 'ml-0' : 'ml-1'}`}
                                             title="Edit tags"
                                         >
-                                            <Highlighter size={14} />
+                                            {(!book.tags || book.tags.length === 0) ? (
+                                                <span className="text-xs text-[var(--text-secondary)] hover:text-[var(--accent-primary)] flex items-center gap-1 border border-dashed border-[var(--glass-border)] px-2 py-1 rounded-full hover:bg-[var(--glass-highlight)] transition-all">
+                                                    + Add Tags
+                                                </span>
+                                            ) : (
+                                                <Highlighter size={14} />
+                                            )}
                                         </button>
                                     </div>
                                 ) : (

@@ -48,6 +48,16 @@ export const api = {
         return response.json();
     },
 
+    createAuthor: async (name) => {
+        const response = await fetch(`${API_BASE}/authors`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name })
+        });
+        if (!response.ok) throw new Error('Failed to create author');
+        return response.json();
+    },
+
     getAuthor: async (id) => {
         const response = await fetch(`${API_BASE}/authors/${id}`);
         if (!response.ok) throw new Error('Failed to fetch author');

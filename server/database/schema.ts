@@ -1,7 +1,20 @@
 import { pgTable, serial, text, integer, timestamp, boolean, jsonb, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
-// Books Table
+// Authors Table (Defined first as it has no dependencies)
+export const authors = pgTable('authors', {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull().unique(),
+    birthYear: integer('birth_year'),
+    deathYear: integer('death_year'),
+    gender: text('gender'),
+    race: text('race'),
+    nationality: text('nationality'),
+    bio: text('bio'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Books Table (References authors)
 export const books = pgTable('books', {
     id: serial('id').primaryKey(),
     title: text('title').notNull(),
@@ -16,20 +29,7 @@ export const books = pgTable('books', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-// Authors Table
-export const authors = pgTable('authors', {
-    id: serial('id').primaryKey(),
-    name: text('name').notNull().unique(),
-    birthYear: integer('birth_year'),
-    deathYear: integer('death_year'),
-    gender: text('gender'),
-    race: text('race'),
-    nationality: text('nationality'),
-    bio: text('bio'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
-// Highlights Table
+// Highlights Table (References books and authors)
 export const highlights = pgTable('highlights', {
     id: serial('id').primaryKey(),
     text: text('text').notNull(),
@@ -41,6 +41,15 @@ export const highlights = pgTable('highlights', {
     createdAt: timestamp('created_at').defaultNow().notNull(),
     originalDate: timestamp('original_date'), // Date from Kindle clipping
 });
+
+// Book-Authors Junction Table (References books and authors)
+export const bookAuthors = pgTable('book_authors', {
+    id: serial('id').primaryKey(),
+    bookId: integer('book_id').references(() => books.id).notNull(),
+    authorId: integer('author_id').references(() => authors.id).notNull(),
+}, (t) => ({
+    uniqueLink: uniqueIndex('unique_book_author_idx').on(t.bookId, t.authorId),
+}));
 
 // User Settings
 export const userSettings = pgTable('user_settings', {
@@ -90,17 +99,30 @@ export const achievements = pgTable('achievements', {
 });
 
 // Relations
-export const booksRelations = relations(books, ({ one, many }) => ({
-    author: one(authors, {
-        fields: [books.authorId],
-        references: [authors.id],
-    }),
+export const authorsRelations = relations(authors, ({ many }) => ({
+    books: many(books), // Legacy
+    bookAuthors: many(bookAuthors),
     highlights: many(highlights),
 }));
 
-export const authorsRelations = relations(authors, ({ many }) => ({
-    books: many(books),
+export const booksRelations = relations(books, ({ one, many }) => ({
+    author: one(authors, { // Legacy
+        fields: [books.authorId],
+        references: [authors.id],
+    }),
+    bookAuthors: many(bookAuthors), // Many-to-many via junction
     highlights: many(highlights),
+}));
+
+export const bookAuthorsRelations = relations(bookAuthors, ({ one }) => ({
+    book: one(books, {
+        fields: [bookAuthors.bookId],
+        references: [books.id],
+    }),
+    author: one(authors, {
+        fields: [bookAuthors.authorId],
+        references: [authors.id],
+    }),
 }));
 
 export const highlightsRelations = relations(highlights, ({ one }) => ({

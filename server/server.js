@@ -57,23 +57,27 @@ app.post('/api/import/readwise', upload.single('file'), async (req, res) => {
 
 app.get('/api/books', async (req, res) => {
     try {
-        const result = await db
-            .select({
-                book: books,
-                author: authors,
-                highlightCount: sql`count(${highlights.id})`.mapWith(Number)
-            })
-            .from(books)
-            .leftJoin(authors, eq(books.authorId, authors.id))
-            .leftJoin(highlights, eq(books.id, highlights.bookId))
-            .groupBy(books.id, authors.id)
-            .orderBy(desc(books.dateLastRead));
+        const result = await db.query.books.findMany({
+            with: {
+                author: true, // Legacy
+                bookAuthors: {
+                    with: {
+                        author: true
+                    }
+                },
+                highlights: true
+            },
+            orderBy: desc(books.dateLastRead)
+        });
 
         // Format for frontend
-        const formatted = result.map(row => ({
-            ...row.book,
-            author: row.author,
-            highlightCount: row.highlightCount
+        const formatted = result.map(book => ({
+            ...book,
+            // Provide a clean authors array
+            authors: book.bookAuthors.map(ba => ba.author),
+            // Legacy support (use first author or direct link)
+            author: book.author || (book.bookAuthors[0] ? book.bookAuthors[0].author : null),
+            highlightCount: book.highlights.length
         }));
 
         res.json(formatted);
@@ -89,13 +93,26 @@ app.get('/api/books/:id', async (req, res) => {
             where: eq(books.id, parseInt(req.params.id)),
             with: {
                 author: true,
+                bookAuthors: {
+                    with: {
+                        author: true
+                    }
+                },
                 highlights: {
                     orderBy: desc(highlights.location) // or location?
                 }
             }
         });
         if (!book) return res.status(404).json({ error: 'Book not found' });
-        res.json(book);
+
+        // Format for frontend
+        const formatted = {
+            ...book,
+            authors: book.bookAuthors.map(ba => ba.author),
+            author: book.author || (book.bookAuthors[0] ? book.bookAuthors[0].author : null)
+        };
+
+        res.json(formatted);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -163,27 +180,48 @@ app.post('/api/books/bulk/tags', async (req, res) => {
     }
 });
 
-// Update book details (e.g., genre, dateLastRead)
+// Update book details (e.g., genre, dateLastRead, authors)
 app.patch('/api/books/:id', async (req, res) => {
     try {
         const bookId = parseInt(req.params.id);
-        const { genre, dateLastRead } = req.body;
+        const { genre, dateLastRead, authorIds } = req.body;
 
-        // Construct update object with only provided fields
         const updateData = {};
         if (genre !== undefined) updateData.genre = genre;
         if (dateLastRead !== undefined) updateData.dateLastRead = new Date(dateLastRead);
 
-        if (Object.keys(updateData).length === 0) {
-            return res.status(400).json({ error: 'No fields to update' });
+        // Handle authors update if provided
+        if (authorIds !== undefined && Array.isArray(authorIds)) {
+            // 1. Transactional update of book_authors
+            await db.transaction(async (tx) => {
+                // Remove existing
+                const { bookAuthors } = await import('./database/schema.ts');
+                await tx.delete(bookAuthors).where(eq(bookAuthors.bookId, bookId));
+
+                // Insert new
+                if (authorIds.length > 0) {
+                    await tx.insert(bookAuthors).values(
+                        authorIds.map(aid => ({
+                            bookId: bookId,
+                            authorId: aid
+                        }))
+                    );
+                }
+
+                // Update legacy authorId for backward compatibility (set to first author)
+                updateData.authorId = authorIds.length > 0 ? authorIds[0] : null;
+            });
         }
 
-        await db.update(books)
-            .set(updateData)
-            .where(eq(books.id, bookId));
+        if (Object.keys(updateData).length > 0) {
+            await db.update(books)
+                .set(updateData)
+                .where(eq(books.id, bookId));
+        }
 
         res.json({ success: true, ...updateData });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ error: e.message });
     }
 });
@@ -254,6 +292,25 @@ app.post('/api/books/:id/cover/fetch', async (req, res) => {
         } else {
             res.status(404).json({ error: 'No details found' });
         }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Create new author
+app.post('/api/authors', async (req, res) => {
+    try {
+        const { name } = req.body;
+        if (!name) return res.status(400).json({ error: 'Name is required' });
+
+        // Check if exists
+        const existing = await db.query.authors.findFirst({
+            where: eq(authors.name, name)
+        });
+        if (existing) return res.json(existing);
+
+        const [newAuthor] = await db.insert(authors).values({ name }).returning();
+        res.json(newAuthor);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
