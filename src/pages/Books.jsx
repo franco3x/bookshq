@@ -64,6 +64,9 @@ export default function Books() {
     // Get filter params from URL
     const tagFilter = searchParams.get('tag');
     const genreFilter = searchParams.get('genre');
+    const nationalityFilter = searchParams.get('nationality');
+    const raceFilter = searchParams.get('race');
+    const genderFilter = searchParams.get('gender');
 
     // Filter and sort books
     const filteredBooks = books
@@ -79,7 +82,12 @@ export default function Books() {
             // Genre filter
             const matchesGenre = !genreFilter || book.genre === genreFilter;
 
-            return matchesSearch && matchesTag && matchesGenre;
+            // Demographics filters
+            const matchesNationality = !nationalityFilter || book.author?.nationality === nationalityFilter;
+            const matchesRace = !raceFilter || book.author?.race === raceFilter;
+            const matchesGender = !genderFilter || book.author?.gender === genderFilter;
+
+            return matchesSearch && matchesTag && matchesGenre && matchesNationality && matchesRace && matchesGender;
         })
         .sort((a, b) => {
             switch (sortBy) {
@@ -95,10 +103,8 @@ export default function Books() {
                     return 0;
             }
         });
-    // Actually standard sort logic is better directly in switch above.
-    // 'dateLastRead': b - a (descending, newest first)
-    // 'highlightCount': b - a (descending, most first)
-    // 'title': a - b (ascending, A-Z)
+
+    // ... sort logic comments ...
 
     return (
         <div className="space-y-6">
@@ -158,7 +164,7 @@ export default function Books() {
             </div>
 
             {/* Active Filters */}
-            {(tagFilter || genreFilter) && (
+            {(tagFilter || genreFilter || nationalityFilter || raceFilter || genderFilter) && (
                 <div className="flex flex-wrap gap-2 items-center">
                     <span className="text-sm text-[var(--text-muted)]">Filtered by:</span>
                     {tagFilter && (
@@ -184,6 +190,48 @@ export default function Books() {
                                     setSearchParams(searchParams);
                                 }}
                                 className="hover:bg-[var(--accent-secondary)]/20 rounded-full p-0.5"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    )}
+                    {nationalityFilter && (
+                        <div className="px-3 py-1 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center gap-2 text-sm">
+                            <span className="font-medium text-blue-400">Nation: {nationalityFilter}</span>
+                            <button
+                                onClick={() => {
+                                    searchParams.delete('nationality');
+                                    setSearchParams(searchParams);
+                                }}
+                                className="hover:bg-blue-500/20 rounded-full p-0.5"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    )}
+                    {raceFilter && (
+                        <div className="px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full flex items-center gap-2 text-sm">
+                            <span className="font-medium text-purple-400">Race: {raceFilter}</span>
+                            <button
+                                onClick={() => {
+                                    searchParams.delete('race');
+                                    setSearchParams(searchParams);
+                                }}
+                                className="hover:bg-purple-500/20 rounded-full p-0.5"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+                    )}
+                    {genderFilter && (
+                        <div className="px-3 py-1 bg-pink-500/10 border border-pink-500/20 rounded-full flex items-center gap-2 text-sm">
+                            <span className="font-medium text-pink-400">Gender: {genderFilter}</span>
+                            <button
+                                onClick={() => {
+                                    searchParams.delete('gender');
+                                    setSearchParams(searchParams);
+                                }}
+                                className="hover:bg-pink-500/20 rounded-full p-0.5"
                             >
                                 <X size={14} />
                             </button>

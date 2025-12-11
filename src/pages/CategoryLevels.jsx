@@ -127,30 +127,58 @@ export default function CategoryLevels() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {currentData.map((item) => (
-                            <div key={item.id} className="bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--glass-border)] relative overflow-hidden group hover:border-[var(--accent-primary)] transition-colors">
-                                <div className="relative z-10">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <h3 className="font-bold truncate pr-2 flex-1" title={item.categoryValue}>
-                                            {item.categoryValue}
-                                        </h3>
-                                        <span className="text-[var(--accent-gold)] font-bold text-xs bg-[var(--accent-gold)]/10 px-2 py-1 rounded shrink-0 ml-2">
-                                            Lvl {item.level}
-                                        </span>
+                        {currentData.map((item) => {
+                            // Determine link target based on active tab
+                            let linkTarget = '/books';
+                            const encodedValue = encodeURIComponent(item.categoryValue);
+
+                            switch (activeTab) {
+                                case 'genre':
+                                    linkTarget = `/books?genre=${encodedValue}`;
+                                    break;
+                                case 'tag':
+                                    linkTarget = `/books?tag=${encodedValue}`;
+                                    break;
+                                case 'nationality':
+                                    linkTarget = `/books?nationality=${encodedValue}`;
+                                    break;
+                                case 'race':
+                                    linkTarget = `/books?race=${encodedValue}`;
+                                    break;
+                                case 'gender':
+                                    linkTarget = `/books?gender=${encodedValue}`;
+                                    break;
+                            }
+
+                            return (
+                                <Link
+                                    key={item.id}
+                                    to={linkTarget}
+                                    className="block bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--glass-border)] relative overflow-hidden group hover:border-[var(--accent-primary)] transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                    <div className="relative z-10">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <h3 className="font-bold truncate pr-2 flex-1" title={item.categoryValue}>
+                                                {item.categoryValue}
+                                            </h3>
+                                            <span className="text-[var(--accent-gold)] font-bold text-xs bg-[var(--accent-gold)]/10 px-2 py-1 rounded shrink-0 ml-2">
+                                                Lvl {item.level}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden mb-2">
+                                            <div
+                                                className="h-full bg-[var(--accent-primary)]"
+                                                style={{ width: `${Math.min(100, Math.max(5, (item.xp % 100)))}%` }}
+                                            />
+                                        </div>
+                                        <div className="text-xs text-[var(--text-secondary)] flex justify-between">
+                                            <span>{item.xp.toLocaleString()} XP</span>
+                                            <span>Next Lvl: {100 * Math.pow(item.level + 1, 2) - item.xp} XP</span>
+                                        </div>
                                     </div>
-                                    <div className="w-full bg-[var(--bg-tertiary)] h-1.5 rounded-full overflow-hidden mb-2">
-                                        <div
-                                            className="h-full bg-[var(--accent-primary)]"
-                                            style={{ width: `${Math.min(100, Math.max(5, (item.xp % 100)))}%` }}
-                                        />
-                                    </div>
-                                    <div className="text-xs text-[var(--text-secondary)] flex justify-between">
-                                        <span>{item.xp.toLocaleString()} XP</span>
-                                        <span>Next Lvl: {100 * Math.pow(item.level + 1, 2) - item.xp} XP</span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                                </Link>
+                            );
+                        })}
                     </div>
                 )}
             </div>
