@@ -1,17 +1,33 @@
-
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
 import { ArrowLeft, Book as BookIcon, Trophy, Highlighter, Clock, CheckCircle } from 'lucide-react';
 
 export default function BookDetail() {
     const { id } = useParams();
+    const { hash } = useLocation();
     const [book, setBook] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         loadBook();
     }, [id]);
+
+    // Handle deep linking to highlights
+    useEffect(() => {
+        if (!loading && hash && book) {
+            const id = hash.replace('#', '');
+            const element = document.getElementById(id);
+            if (element) {
+                setTimeout(() => {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Flash effect to highlight the target
+                    element.classList.add('ring-2', 'ring-[var(--accent-primary)]');
+                    setTimeout(() => element.classList.remove('ring-2', 'ring-[var(--accent-primary)]'), 2000);
+                }, 500);
+            }
+        }
+    }, [loading, hash, book]);
 
     const loadBook = async () => {
         try {

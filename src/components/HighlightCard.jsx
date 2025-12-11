@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { Share2, BookOpen, Loader } from 'lucide-react';
 import { format } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 export default function HighlightCard({ highlight, showBookInfo = true }) {
     const [sharing, setSharing] = useState(false);
 
-    const handleShare = async () => {
+    const handleShare = async (e) => {
+        e.preventDefault(); // Prevent link navigation
+        e.stopPropagation();
         setSharing(true);
+        // ... existing logic ...
         try {
             const response = await fetch('/api/export/image', {
                 method: 'POST',
@@ -39,24 +43,38 @@ export default function HighlightCard({ highlight, showBookInfo = true }) {
 
     if (!highlight) return null;
 
-    return (
-        <div className="glass-panel p-6 rounded-xl relative group">
-            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                    onClick={handleShare}
-                    disabled={sharing}
-                    className="p-2 hover:bg-[var(--glass-highlight)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                    title="Share as Image"
-                >
-                    {sharing ? <Loader size={18} className="animate-spin" /> : <Share2 size={18} />}
-                </button>
-            </div>
+    const Wrapper = ({ children }) => {
+        if (!highlight.book?.id) return <div>{children}</div>;
+        return (
+            <Link
+                to={`/books/${highlight.book.id}#${highlight.id}`}
+                className="block h-full"
+            >
+                {children}
+            </Link>
+        );
+    };
 
-            <div className="mb-4">
-                <p className="text-xl font-serif leading-relaxed text-[var(--text-primary)]">
-                    "{highlight.text}"
-                </p>
-            </div>
+    return (
+        <div className="glass-panel p-6 rounded-xl relative group transition-all hover:scale-[1.01] hover:border-[var(--accent-primary)] cursor-pointer">
+            <Wrapper>
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <button
+                        onClick={handleShare}
+                        disabled={sharing}
+                        className="p-2 hover:bg-[var(--glass-highlight)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                        title="Share as Image"
+                    >
+                        {sharing ? <Loader size={18} className="animate-spin" /> : <Share2 size={18} />}
+                    </button>
+                </div>
+
+                <div className="mb-4">
+                    <p className="text-xl font-serif leading-relaxed text-[var(--text-primary)]">
+                        "{highlight.text}"
+                    </p>
+                </div>
+            </Wrapper>
 
             {showBookInfo && (
                 <div className="flex items-center gap-3 pt-4 border-t border-[var(--glass-border)]">
