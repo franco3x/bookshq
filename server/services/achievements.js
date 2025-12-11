@@ -24,6 +24,14 @@ const VOCATION_TITLES = [
     { level: 5, prefix: 'Grandmaster' }
 ];
 
+const AUTHOR_TIERS = [
+    { level: 1, count: 2, name: 'Fan' },
+    { level: 2, count: 3, name: 'Devotee' },
+    { level: 3, count: 4, name: 'Scholar' },
+    { level: 4, count: 5, name: 'Disciple' },
+    { level: 5, count: 6, name: 'Authority' }
+];
+
 /**
  * Checks and awards achievements for a user.
  * triggers: 'READ', 'HIGHLIGHT', 'IMPORT', 'STREAK', 'ALL'
@@ -66,6 +74,7 @@ export async function checkAchievements(userId = 1, triggers = ['ALL']) {
 
         const nationalityCounts = {};
         const vocationCounts = {};
+        const authorCounts = {}; // Author Name -> Count of Unique Books
 
         // Helper: Iterate all authors of read books
         for (const b of booksWithAuthors) {
@@ -88,15 +97,24 @@ export async function checkAchievements(userId = 1, triggers = ['ALL']) {
                         vocationCounts[key] = (vocationCounts[key] || 0) + 1;
                     }
                 }
+
+                // Author Counts (Name based)
+                // Note: bookAuthors logic inside "booksWithAuthors" loop ensures we are counting books.
+                // However, we need to ensure we don't double count if an author is listed twice on same book (unlikely but possible).
+                // Since this loop iterates books, then authors, simply incrementing is correct for "number of books read by author"
+                // provided the same author isn't linked multiple times to the same book. The DB schema prevents that usually.
+                if (author.name) {
+                    authorCounts[author.name] = (authorCounts[author.name] || 0) + 1;
+                }
             }
         }
 
         // --- JIT Creation & Checks ---
         await db.transaction(async (tx) => {
             // Function to handle dynamic check/creation
-            const processDynamicCategory = async (counts, categoryType, getNaming) => {
+            const processDynamicCategory = async (counts, categoryType, getNaming, tiers = DYNAMIC_TIERS) => {
                 for (const [key, userCount] of Object.entries(counts)) {
-                    for (const tier of DYNAMIC_TIERS) {
+                    for (const tier of tiers) {
                         if (userCount >= tier.count) {
                             // Construct Code: GENRE_MYSTERY_10
                             const safeKey = key.toUpperCase().replace(/[^A-Z0-9]/g, '_');
@@ -110,7 +128,9 @@ export async function checkAchievements(userId = 1, triggers = ['ALL']) {
                             // JIT Create Definition
                             if (!achievement) {
                                 const { title, description } = getNaming(key, tier);
-                                const icon = categoryType === 'Genre' ? 'Book' : (categoryType === 'Nationality' ? 'Globe' : 'Briefcase');
+                                const icon = categoryType === 'Genre' ? 'Book' :
+                                    (categoryType === 'Nationality' ? 'Globe' :
+                                        (categoryType === 'Author' ? 'User' : 'Briefcase'));
 
                                 [achievement] = await tx.insert(achievements).values({
                                     code,
@@ -167,6 +187,11 @@ export async function checkAchievements(userId = 1, triggers = ['ALL']) {
                     description: `Read ${tier.count} books by ${key}s`
                 };
             });
+
+            await processDynamicCategory(authorCounts, 'Author', (key, tier) => ({
+                title: `${tier.name} of ${key}`,
+                description: `Read ${tier.count} books by ${key}`
+            }), AUTHOR_TIERS);
 
             // --- Standard Static Checks (Reader, Collector, etc.) ---
             const allAchievements = await tx.select().from(achievements).where(eq(achievements.conditionType, 'COUNT'));
