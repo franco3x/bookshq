@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { db } from './database/db.js';
-import { books, authors, highlights, userStats, categoryLevels, authorLevels } from './database/schema.js';
-import { eq, desc, sql, gt, and } from 'drizzle-orm';
+import { books, authors, highlights, userStats, categoryLevels, authorLevels, bookAuthors } from './database/schema.js';
+import { eq, desc, sql, gt, and, ne } from 'drizzle-orm';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -193,9 +193,20 @@ app.patch('/api/books/:id', async (req, res) => {
         // Handle authors update if provided
         if (authorIds !== undefined && Array.isArray(authorIds)) {
             // 1. Transactional update of book_authors
+            const removedAuthorIds = [];
             await db.transaction(async (tx) => {
+                // Get existing authors first to see who is being removed
+                const existingLinks = await tx.query.bookAuthors.findMany({
+                    where: eq(bookAuthors.bookId, bookId)
+                });
+                const existingAuthorIds = existingLinks.map(l => l.authorId);
+
+                // Identify removed authors
+                existingAuthorIds.forEach(id => {
+                    if (!authorIds.includes(id)) removedAuthorIds.push(id);
+                });
+
                 // Remove existing
-                const { bookAuthors } = await import('./database/schema.ts');
                 await tx.delete(bookAuthors).where(eq(bookAuthors.bookId, bookId));
 
                 // Insert new
@@ -209,9 +220,55 @@ app.patch('/api/books/:id', async (req, res) => {
                 }
 
                 // Update legacy authorId for backward compatibility (set to first author)
-                updateData.authorId = authorIds.length > 0 ? authorIds[0] : null;
+                // We must do this INSIDE transaction before deleting authors to avoid FK violation on 'books' table
+                const newLegacyAuthorId = authorIds.length > 0 ? authorIds[0] : null;
+                updateData.authorId = newLegacyAuthorId;
+                await tx.update(books).set({ authorId: newLegacyAuthorId }).where(eq(books.id, bookId));
+
+                // Handle Orphaned Authors & Highlight Migration
+                if (removedAuthorIds.length > 0) {
+                    const newPrimaryAuthorId = authorIds.length > 0 ? authorIds[0] : null;
+
+                    for (const removedId of removedAuthorIds) {
+                        // Check if this author has ANY other books
+                        const otherBooks = await tx.query.bookAuthors.findMany({
+                            where: and(
+                                eq(bookAuthors.authorId, removedId),
+                                ne(bookAuthors.bookId, bookId)
+                            )
+                        });
+
+                        // If NO other books, they are now orphaned
+                        if (otherBooks.length === 0) {
+                            // 1. Migrate Highlights
+                            if (newPrimaryAuthorId) {
+                                await tx.update(highlights)
+                                    .set({ authorId: newPrimaryAuthorId })
+                                    .where(eq(highlights.authorId, removedId));
+                            }
+
+                            // 2. Delete the orphaned author
+                            // DB Constraints are now ON DELETE CASCADE for author_levels and book_authors
+                            await tx.delete(authors).where(eq(authors.id, removedId));
+                        }
+                    }
+                }
             });
+
+            // Trigger recalc if we touched authors
+            if (removedAuthorIds.length > 0 || authorIds.length > 0) {
+                const { recalculateStats } = await import('./services/stats.js');
+                // Run in background
+                recalculateStats().catch(err => console.error('Recalc failed:', err));
+            }
         }
+
+        // Apply other updates (genre, date) if needed
+        // create formatted update object excluding what we already handled? 
+        // actually updateData keys (authorId) are already handled. 
+        // but safe to run update again or just filter.
+        // Let's just remove authorId from updateData before running the second update
+        delete updateData.authorId;
 
         if (Object.keys(updateData).length > 0) {
             await db.update(books)
@@ -318,11 +375,15 @@ app.post('/api/authors', async (req, res) => {
 
 app.get('/api/authors', async (req, res) => {
     try {
-        // Fetch all authors with their books in one query
+        // Fetch all authors with their books via bookAuthors junction
         const allAuthors = await db.query.authors.findMany({
             orderBy: authors.name,
             with: {
-                books: true
+                bookAuthors: {
+                    with: {
+                        book: true
+                    }
+                }
             }
         });
 
@@ -343,14 +404,19 @@ app.get('/api/authors', async (req, res) => {
         const levelMap = new Map(levels.map(l => [l.authorId, { xp: l.xp, level: l.level }]));
 
         // Map the counts and levels to authors (in-memory, super fast)
-        const authorsWithCounts = allAuthors.map(author => ({
-            ...author,
-            authorLevel: levelMap.get(author.id) || { xp: 0, level: 1 },
-            books: author.books.map(book => ({
-                ...book,
-                highlightCount: countMap.get(book.id) || 0
-            }))
-        }));
+        const authorsWithCounts = allAuthors.map(author => {
+            // Flatten bookAuthors to books
+            const books = author.bookAuthors.map(ba => ba.book);
+
+            return {
+                ...author,
+                authorLevel: levelMap.get(author.id) || { xp: 0, level: 1 },
+                books: books.map(book => ({
+                    ...book,
+                    highlightCount: countMap.get(book.id) || 0
+                }))
+            };
+        });
 
         res.json(authorsWithCounts);
     } catch (e) {
@@ -365,9 +431,13 @@ app.get('/api/authors/:id', async (req, res) => {
         const author = await db.query.authors.findFirst({
             where: eq(authors.id, authorId),
             with: {
-                books: {
+                bookAuthors: {
                     with: {
-                        highlights: true
+                        book: {
+                            with: {
+                                highlights: true
+                            }
+                        }
                     }
                 },
                 highlights: true
@@ -381,9 +451,13 @@ app.get('/api/authors/:id', async (req, res) => {
             where: eq(authorLevels.authorId, authorId)
         });
 
+        // Flatten books
+        const books = author.bookAuthors.map(ba => ba.book);
+
         // Add the level data to the response
         res.json({
             ...author,
+            books: books, // Override/Add flattened books
             authorLevel: authorLevel || { xp: 0, level: 1 }
         });
     } catch (e) {
