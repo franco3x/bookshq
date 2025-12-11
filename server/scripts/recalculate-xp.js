@@ -16,8 +16,8 @@ async function recalculate() {
     try {
         // 1. Clear existing levels (optional but ensures clean slate)
         console.log('🧹 Clearing existing level data...');
-        // await db.delete(authorLevels); // Uncomment if safe
-        // await db.delete(categoryLevels);
+        await db.delete(authorLevels); // Uncomment if safe
+        await db.delete(categoryLevels);
 
         // 2. Fetch all books with highlights and authors
         const allBooks = await db.query.books.findMany({
@@ -54,9 +54,47 @@ async function recalculate() {
             totalGlobalXP += bookXP;
 
             // Author XP
-            if (book.authorId) {
+            if (book.authorId && book.author) {
                 const current = authorXPMap.get(book.authorId) || 0;
                 authorXPMap.set(book.authorId, current + bookXP);
+
+                // Category XP: Author Demographics
+                // Helper to normalize strings (Title Case)
+                const toTitleCase = (str) => {
+                    return str
+                        .toLowerCase()
+                        .split(' ')
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
+                };
+
+                // Gender
+                if (book.author.gender) {
+                    const normalized = toTitleCase(book.author.gender);
+                    const key = `gender:${normalized}`;
+                    const current = categoryXPMap.get(key) || 0;
+                    categoryXPMap.set(key, current + bookXP);
+                }
+
+                // Race/Ethnicity
+                if (book.author.race) {
+                    const normalized = toTitleCase(book.author.race);
+                    const key = `race:${normalized}`;
+                    const current = categoryXPMap.get(key) || 0;
+                    categoryXPMap.set(key, current + bookXP);
+                }
+
+                // Nationality
+                if (book.author.nationality) {
+                    // normalize some common ones if needed, otherwise just Title Case
+                    let normalized = toTitleCase(book.author.nationality);
+                    if (normalized === 'American') normalized = 'United States';
+                    if (normalized === 'Usa') normalized = 'United States';
+
+                    const key = `nationality:${normalized}`;
+                    const current = categoryXPMap.get(key) || 0;
+                    categoryXPMap.set(key, current + bookXP);
+                }
             }
 
             // Category XP: Genre
