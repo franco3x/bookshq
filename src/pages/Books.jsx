@@ -80,7 +80,14 @@ export default function Books() {
             const matchesTag = !tagFilter || (book.tags && book.tags.includes(tagFilter));
 
             // Genre filter
-            const matchesGenre = !genreFilter || book.genre === genreFilter;
+            let matchesGenre = true;
+            if (genreFilter) {
+                if (Array.isArray(book.genre)) {
+                    matchesGenre = book.genre.includes(genreFilter);
+                } else {
+                    matchesGenre = book.genre === genreFilter;
+                }
+            }
 
             // Demographics filters
             const matchesNationality = !nationalityFilter || book.author?.nationality === nationalityFilter;

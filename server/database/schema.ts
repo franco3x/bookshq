@@ -7,7 +7,7 @@ export const books = pgTable('books', {
     title: text('title').notNull(),
     authorId: integer('author_id').references(() => authors.id),
     coverImage: text('cover_image'), // URL or base64
-    genre: text('genre'), // Simple string for V1
+    genre: jsonb('genre').default([]), // Changed from text to jsonb array
     tags: jsonb('tags').default([]), // Array of tag strings for custom categorization
     asin: text('asin'),
     readCount: integer('read_count').default(0),

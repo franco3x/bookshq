@@ -69,7 +69,7 @@ app.get('/api/books', async (req, res) => {
             .groupBy(books.id, authors.id)
             .orderBy(desc(books.dateLastRead));
 
-        // Format for frontend: { ...bookFields, author: { ...authorFields }, highlightCount: 10 }
+        // Format for frontend
         const formatted = result.map(row => ({
             ...row.book,
             author: row.author,

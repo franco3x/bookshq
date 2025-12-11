@@ -98,7 +98,14 @@ async function recalculate() {
             }
 
             // Category XP: Genre
-            if (book.genre) {
+            if (book.genre && Array.isArray(book.genre)) {
+                for (const g of book.genre) {
+                    const key = `genre:${g}`;
+                    const current = categoryXPMap.get(key) || 0;
+                    categoryXPMap.set(key, current + bookXP);
+                }
+            } else if (typeof book.genre === 'string') {
+                // Fallback for legacy data/cache issues
                 const key = `genre:${book.genre}`;
                 const current = categoryXPMap.get(key) || 0;
                 categoryXPMap.set(key, current + bookXP);

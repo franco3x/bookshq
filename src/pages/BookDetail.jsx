@@ -47,11 +47,12 @@ export default function BookDetail() {
 
     const handleSaveGenre = async () => {
         try {
-            const newGenre = genreInput.trim();
-            if (!newGenre) return;
+            // Split by comma and clean up
+            const newGenres = genreInput.split(',').map(g => g.trim()).filter(Boolean);
+            if (newGenres.length === 0) return;
 
-            await api.updateBook(book.id, { genre: newGenre });
-            setBook(prev => ({ ...prev, genre: newGenre }));
+            await api.updateBook(book.id, { genre: newGenres });
+            setBook(prev => ({ ...prev, genre: newGenres }));
             setIsEditingGenre(false);
         } catch (error) {
             console.error('Failed to update genre:', error);
@@ -183,8 +184,8 @@ export default function BookDetail() {
                                             type="text"
                                             value={genreInput}
                                             onChange={(e) => setGenreInput(e.target.value)}
-                                            placeholder="Enter genre"
-                                            className="bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--accent-secondary)]"
+                                            placeholder="Enter genres (comma-separated)"
+                                            className="bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--accent-secondary)] min-w-[200px]"
                                             autoFocus
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') handleSaveGenre();
@@ -205,27 +206,31 @@ export default function BookDetail() {
                                         </button>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-1">
-                                        {book.genre ? (
-                                            <Link
-                                                to={`/books?genre=${encodeURIComponent(book.genre)}`}
-                                                className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 text-[var(--accent-secondary)] hover:bg-[var(--accent-secondary)]/10 hover:border-[var(--accent-secondary)]/30 transition-colors cursor-pointer"
-                                            >
-                                                <BookIcon size={16} />
-                                                <span>{book.genre}</span>
-                                            </Link>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {Array.isArray(book.genre) && book.genre.length > 0 ? (
+                                            book.genre.map((g, i) => (
+                                                <Link
+                                                    key={i}
+                                                    to={`/books?genre=${encodeURIComponent(g)}`}
+                                                    className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 text-[var(--accent-secondary)] hover:bg-[var(--accent-secondary)]/10 hover:border-[var(--accent-secondary)]/30 transition-colors cursor-pointer"
+                                                >
+                                                    <BookIcon size={16} />
+                                                    <span>{g}</span>
+                                                </Link>
+                                            ))
                                         ) : (
                                             <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 text-[var(--text-muted)] italic">
-                                                <span>No genre</span>
+                                                <span>No genres</span>
                                             </div>
                                         )}
                                         <button
                                             onClick={() => {
-                                                setGenreInput(book.genre || '');
+                                                const val = Array.isArray(book.genre) ? book.genre.join(', ') : (book.genre || '');
+                                                setGenreInput(val);
                                                 setIsEditingGenre(true);
                                             }}
                                             className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors rounded-full hover:bg-[var(--glass-highlight)]"
-                                            title="Edit genre"
+                                            title="Edit genres"
                                         >
                                             <Highlighter size={14} />
                                         </button>
