@@ -17,7 +17,7 @@ export default function BookDetail() {
     useEffect(() => {
         if (!loading && hash && book) {
             const id = hash.replace('#', '');
-            const element = document.getElementById(id);
+            const element = document.getElementById(`highlight-${id}`);
             if (element) {
                 setTimeout(() => {
                     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -485,7 +485,11 @@ export default function BookDetail() {
 
                 <div className="space-y-6">
                     {book.highlights?.map(highlight => (
-                        <div key={highlight.id} className="glass-panel p-6 rounded-xl hover:bg-[var(--glass-highlight)] transition-colors">
+                        <div
+                            key={highlight.id}
+                            id={`highlight-${highlight.id}`}
+                            className="glass-panel p-6 rounded-xl hover:bg-[var(--glass-highlight)] transition-colors scroll-mt-24"
+                        >
                             <p className="text-lg leading-relaxed font-serif text-[var(--text-primary)]">
                                 "{highlight.text}"
                             </p>
