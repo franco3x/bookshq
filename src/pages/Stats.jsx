@@ -34,8 +34,10 @@ export default function Stats() {
     if (loading) return <div>Loading stats...</div>;
 
     // Calculate frontend derivables
-    const currentLevel = stats.readerLevel || 1;
     const currentXP = stats.totalXp || 0;
+    // Calculate level dynamically to ensure sync with XP (XP = 100 * Level^2)
+    // Level = sqrt(XP / 100)
+    const currentLevel = Math.max(1, Math.floor(Math.sqrt(currentXP / 100)));
     const nextLevelXP = 100 * Math.pow(currentLevel + 1, 2);
 
     // Get top stats

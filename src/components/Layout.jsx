@@ -17,9 +17,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import SearchBar from './SearchBar';
 import ImportModal from './ImportModal';
 
+import { api } from '../utils/api';
+
 export default function Layout() {
     const location = useLocation();
     const [isImportOpen, setIsImportOpen] = useState(false);
+    const [userLevel, setUserLevel] = useState(null);
+
+    React.useEffect(() => {
+        api.getStats().then(stats => {
+            if (stats && stats.totalXp) {
+                // Calculate level dynamically
+                const lvl = Math.floor(Math.sqrt(stats.totalXp / 100));
+                setUserLevel(lvl || 1);
+            }
+        }).catch(err => console.error("Failed to load user level", err));
+    }, []);
 
     const navItems = [
         { icon: Home, label: 'Home', path: '/' },
@@ -69,7 +82,9 @@ export default function Layout() {
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">Frank Coleman</p>
-                            <p className="text-xs text-[var(--text-muted)]">Level 1 Reader</p>
+                            <p className="text-xs text-[var(--text-muted)]">
+                                {userLevel ? `Level ${userLevel} Reader` : 'Reader'}
+                            </p>
                         </div>
                     </div>
                 </div>
