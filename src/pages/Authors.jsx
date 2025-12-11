@@ -9,7 +9,7 @@ export default function Authors() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('');
     const [viewMode, setViewMode] = useState('grid');
-    const [sortBy, setSortBy] = useState('name-asc'); // name-asc, name-desc, books-desc, books-asc, highlights-desc
+    const [sortBy, setSortBy] = useState('level-desc'); // level-desc, name-asc, name-desc, books-desc, books-asc, highlights-desc
 
     useEffect(() => {
         loadAuthors();
@@ -33,6 +33,8 @@ export default function Authors() {
     // Sort authors based on selected option
     const sortedAuthors = [...filteredAuthors].sort((a, b) => {
         switch (sortBy) {
+            case 'level-desc':
+                return (b.authorLevel?.xp || 0) - (a.authorLevel?.xp || 0);
             case 'name-asc':
                 return a.name.localeCompare(b.name);
             case 'name-desc':
@@ -67,6 +69,7 @@ export default function Authors() {
                         onChange={(e) => setSortBy(e.target.value)}
                         className="bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-2 text-sm outline-none focus:border-[var(--accent-primary)] transition-colors cursor-pointer"
                     >
+                        <option value="level-desc">Highest Level</option>
                         <option value="name-asc">Name (A-Z)</option>
                         <option value="name-desc">Name (Z-A)</option>
                         <option value="books-desc">Most Books</option>
@@ -123,13 +126,15 @@ export default function Authors() {
                                 <thead className="bg-[var(--bg-secondary)] text-[var(--text-secondary)] text-sm uppercase tracking-wider font-medium">
                                     <tr>
                                         <th className="p-4">Author</th>
+                                        <th className="p-4 text-center">Level</th>
                                         <th className="p-4 text-center">Books</th>
-                                        <th className="p-4 text-right">Total Highlights</th>
+                                        <th className="p-4 text-right">Highlights</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--glass-border)]">
                                     {sortedAuthors.map(author => {
                                         const totalHighlights = author.books?.reduce((sum, book) => sum + (book.highlightCount || 0), 0) || 0;
+                                        const level = author.authorLevel?.level || 1;
 
                                         return (
                                             <tr key={author.id} className="group hover:bg-[var(--glass-highlight)] transition-colors">
@@ -138,6 +143,11 @@ export default function Authors() {
                                                         <Users size={14} className="text-[var(--text-muted)]" />
                                                         {author.name}
                                                     </Link>
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[var(--accent-gold)]/10 text-[var(--accent-gold)] border border-[var(--accent-gold)]/20">
+                                                        Lvl {level}
+                                                    </span>
                                                 </td>
                                                 <td className="p-4 text-center">
                                                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--glass-border)]">

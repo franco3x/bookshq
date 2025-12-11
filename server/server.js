@@ -338,9 +338,14 @@ app.get('/api/authors', async (req, res) => {
         // Create a lookup map for O(1) access
         const countMap = new Map(highlightCounts.map(hc => [hc.bookId, hc.count]));
 
-        // Map the counts to authors (in-memory, super fast)
+        // Fetch all author levels
+        const levels = await db.query.authorLevels.findMany();
+        const levelMap = new Map(levels.map(l => [l.authorId, { xp: l.xp, level: l.level }]));
+
+        // Map the counts and levels to authors (in-memory, super fast)
         const authorsWithCounts = allAuthors.map(author => ({
             ...author,
+            authorLevel: levelMap.get(author.id) || { xp: 0, level: 1 },
             books: author.books.map(book => ({
                 ...book,
                 highlightCount: countMap.get(book.id) || 0
