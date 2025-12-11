@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { db } from './database/db';
 import { books, authors, highlights, userStats } from './database/schema';
-import { sql, desc, eq, asc } from 'drizzle-orm';
+import { eq, desc, sql, gt } from 'drizzle-orm';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -322,11 +322,15 @@ app.get('/api/stats', async (req, res) => {
         const [stats] = await db.select().from(userStats).limit(1);
         const highlightCount = await db.select({ count: sql`count(*)` }).from(highlights);
         const bookCount = await db.select({ count: sql`count(*)` }).from(books);
+        const readBookCount = await db.select({ count: sql`count(*)` })
+            .from(books)
+            .where(gt(books.readCount, 0));
 
         res.json({
             ...stats,
             totalHighlights: highlightCount[0].count,
-            totalBooks: bookCount[0].count
+            totalBooks: bookCount[0].count,
+            booksRead: readBookCount[0].count
         });
     } catch (e) {
         res.status(500).json({ error: e.message });

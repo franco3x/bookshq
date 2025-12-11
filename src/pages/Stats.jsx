@@ -55,7 +55,8 @@ export default function Stats() {
             </div>
 
             {/* Grid Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Grid Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
                     <div className="p-3 bg-purple-500/20 text-purple-400 rounded-lg">
                         <Zap size={24} />
@@ -82,6 +83,16 @@ export default function Stats() {
                     </div>
                     <div>
                         <div className="text-sm text-[var(--text-secondary)]">Books Read</div>
+                        <div className="text-2xl font-bold">{stats.booksRead || 0}</div>
+                    </div>
+                </div>
+
+                <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
+                    <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                        <BookOpen size={24} />
+                    </div>
+                    <div>
+                        <div className="text-sm text-[var(--text-secondary)]">Total Library</div>
                         <div className="text-2xl font-bold">{stats.totalBooks}</div>
                     </div>
                 </div>
