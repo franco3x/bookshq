@@ -255,7 +255,7 @@ export async function saveHighlights(parsedClippings) {
 
         const booksData = await db.query.books.findMany({
             where: inArray(books.id, usedBookIds),
-            columns: { id: true, genre: true }
+            columns: { id: true, genre: true, tags: true }
         });
         const authorsData = await db.query.authors.findMany({
             where: inArray(authors.id, usedAuthorIds),
@@ -272,6 +272,7 @@ export async function saveHighlights(parsedClippings) {
                 authorId: h.authorId,
                 bookId: h.bookId,
                 genre: book?.genre,
+                tags: book?.tags || [],
                 gender: author?.gender,
                 race: author?.race,
                 nationality: author?.nationality

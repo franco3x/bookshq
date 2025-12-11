@@ -9,6 +9,8 @@ import Authors from './pages/Authors';
 import Home from './pages/Home';
 import Highlights from './pages/Highlights';
 import Stats from './pages/Stats';
+import CategoryLevels from './pages/CategoryLevels';
+import AuthorRankings from './pages/AuthorRankings';
 import Settings from './pages/Settings';
 
 function App() {
@@ -21,7 +23,10 @@ function App() {
         <Route path="authors" element={<Authors />} />
         <Route path="authors/:id" element={<AuthorDetail />} />
         <Route path="highlights" element={<Highlights />} />
+        <Route path="highlights" element={<Highlights />} />
         <Route path="stats" element={<Stats />} />
+        <Route path="stats/categories" element={<CategoryLevels />} />
+        <Route path="stats/authors" element={<AuthorRankings />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>

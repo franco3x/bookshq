@@ -63,6 +63,17 @@ export const api = {
         return response.json();
     },
 
+    // Bulk update tags for books
+    bulkUpdateTags: async (bookIds, tags) => {
+        const response = await fetch(`${API_BASE}/books/bulk/tags`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookIds, tags })
+        });
+        if (!response.ok) throw new Error('Failed to update tags');
+        return response.json();
+    },
+
     // Highlights
     getRandomHighlight: async () => {
         const response = await fetch(`${API_BASE}/highlights/random`);
@@ -80,6 +91,18 @@ export const api = {
     getStats: async () => {
         const response = await fetch(`${API_BASE}/stats`);
         if (!response.ok) throw new Error('Failed to fetch stats');
+        return response.json();
+    },
+
+    getCategoryLevels: async () => {
+        const response = await fetch(`${API_BASE}/stats/categories`);
+        if (!response.ok) throw new Error('Failed to fetch category stats');
+        return response.json();
+    },
+
+    getAuthorRankings: async () => {
+        const response = await fetch(`${API_BASE}/stats/authors/rankings`);
+        if (!response.ok) throw new Error('Failed to fetch author rankings');
         return response.json();
     }
 };

@@ -2,19 +2,26 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../utils/api';
 import ProgressMeter from '../components/ProgressMeter';
 import { Trophy, Zap, BookOpen, Highlighter } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Stats() {
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [categories, setCategories] = useState(null);
+    const [topAuthors, setTopAuthors] = useState(null);
 
     useEffect(() => {
-        loadStats();
+        loadData();
     }, []);
 
-    const loadStats = async () => {
+    const loadData = async () => {
         try {
-            const data = await api.getStats();
-            setStats(data);
+            const [statsData, catData, authorData] = await Promise.all([
+                api.getStats(),
+                api.getCategoryLevels(),
+                api.getAuthorRankings()
+            ]);
+            setStats(statsData);
+            setCategories(catData);
+            setTopAuthors(authorData);
         } catch (error) {
             console.error(error);
         } finally {
@@ -24,11 +31,14 @@ export default function Stats() {
 
     if (loading) return <div>Loading stats...</div>;
 
-    // Calculate frontend derivables if backend doesn't send everything
+    // Calculate frontend derivables
     const currentLevel = stats.readerLevel || 1;
     const currentXP = stats.totalXp || 0;
-    // Next level formula: 100 * (L+1)^2
     const nextLevelXP = 100 * Math.pow(currentLevel + 1, 2);
+
+    // Get top stats
+    const topGenre = categories?.genre?.[0];
+    const topAuthor = topAuthors?.[0];
 
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
@@ -54,7 +64,45 @@ export default function Stats() {
                 </div>
             </div>
 
-            {/* Grid Stats */}
+            {/* Top Insights */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Link to="/stats/categories" className="glass-panel p-6 rounded-xl hover:border-[var(--accent-primary)] transition-colors group">
+                    <div className="flex justify-between items-start mb-4">
+                        <h3 className="font-bold text-lg flex items-center gap-2">
+                            <BookOpen size={20} className="text-[var(--accent-primary)]" />
+                            Top Genre
+                        </h3>
+                        <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">View All &rarr;</span>
+                    </div>
+                    {topGenre ? (
+                        <div>
+                            <div className="text-2xl font-bold mb-1">{topGenre.categoryValue}</div>
+                            <div className="text-sm text-[var(--text-secondary)]">Level {topGenre.level} • {topGenre.xp.toLocaleString()} XP</div>
+                        </div>
+                    ) : (
+                        <div className="text-[var(--text-secondary)]">No genre data yet</div>
+                    )}
+                </Link>
+
+                <Link to="/stats/authors" className="glass-panel p-6 rounded-xl hover:border-[var(--accent-primary)] transition-colors group">
+                    <div className="flex justify-between items-start mb-4">
+                        <h3 className="font-bold text-lg flex items-center gap-2">
+                            <Trophy size={20} className="text-[var(--accent-gold)]" />
+                            Top Author
+                        </h3>
+                        <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">View Rankings &rarr;</span>
+                    </div>
+                    {topAuthor ? (
+                        <div>
+                            <div className="text-2xl font-bold mb-1">{topAuthor.author.name}</div>
+                            <div className="text-sm text-[var(--text-secondary)]">Level {topAuthor.level} • {topAuthor.xp.toLocaleString()} XP</div>
+                        </div>
+                    ) : (
+                        <div className="text-[var(--text-secondary)]">No author data yet</div>
+                    )}
+                </Link>
+            </div>
+
             {/* Grid Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
@@ -66,7 +114,7 @@ export default function Stats() {
                         <div className="text-2xl font-bold">{currentXP.toLocaleString()}</div>
                     </div>
                 </div>
-
+                {/* ... existing stats ... */}
                 <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
                     <div className="p-3 bg-blue-500/20 text-blue-400 rounded-lg">
                         <Highlighter size={24} />
@@ -95,17 +143,6 @@ export default function Stats() {
                         <div className="text-sm text-[var(--text-secondary)]">Total Library</div>
                         <div className="text-2xl font-bold">{stats.totalBooks}</div>
                     </div>
-                </div>
-            </div>
-
-            {/* Achievements Placeholder */}
-            <div>
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Trophy className="text-[var(--accent-gold)]" size={20} />
-                    Recent Achievements
-                </h2>
-                <div className="glass-panel p-8 rounded-xl text-center text-[var(--text-secondary)]">
-                    Achievements coming soon in V2!
                 </div>
             </div>
         </div>

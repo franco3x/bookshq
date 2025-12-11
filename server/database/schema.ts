@@ -8,6 +8,7 @@ export const books = pgTable('books', {
     authorId: integer('author_id').references(() => authors.id),
     coverImage: text('cover_image'), // URL or base64
     genre: text('genre'), // Simple string for V1
+    tags: jsonb('tags').default([]), // Array of tag strings for custom categorization
     asin: text('asin'),
     readCount: integer('read_count').default(0),
     dateLastRead: timestamp('date_last_read'),
@@ -54,7 +55,6 @@ export const userSettings = pgTable('user_settings', {
 export const userStats = pgTable('user_stats', {
     id: serial('id').primaryKey(),
     totalXp: integer('total_xp').default(0).notNull(),
-    readerLevel: integer('reader_level').default(1).notNull(),
     readerLevel: integer('reader_level').default(1).notNull(),
     updatedAt: timestamp('updated_at').defaultNow(),
 });

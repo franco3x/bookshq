@@ -9,7 +9,10 @@ export default function Books() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('');
     const [viewMode, setViewMode] = useState('grid');
-    const [sortBy, setSortBy] = useState('dateLastRead'); // 'title', 'author', 'highlightCount', 'dateLastRead'
+    const [sortBy, setSortBy] = useState('dateLastRead');
+    const [selectedBooks, setSelectedBooks] = useState(new Set());
+    const [bulkTagInput, setBulkTagInput] = useState('');
+    const [isTagging, setIsTagging] = useState(false);
 
     useEffect(() => {
         loadBooks();
@@ -24,6 +27,37 @@ export default function Books() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleBulkTag = async () => {
+        if (selectedBooks.size === 0 || !bulkTagInput.trim()) return;
+
+        setIsTagging(true);
+        try {
+            // Parse tags (comma-separated, trim whitespace)
+            const tags = bulkTagInput.split(',').map(t => t.trim()).filter(Boolean);
+            await api.bulkUpdateTags(Array.from(selectedBooks), tags);
+
+            // Reload books and clear selection
+            await loadBooks();
+            setSelectedBooks(new Set());
+            setBulkTagInput('');
+        } catch (e) {
+            console.error(e);
+            alert('Failed to update tags');
+        } finally {
+            setIsTagging(false);
+        }
+    };
+
+    const toggleBookSelection = (bookId) => {
+        const newSelection = new Set(selectedBooks);
+        if (newSelection.has(bookId)) {
+            newSelection.delete(bookId);
+        } else {
+            newSelection.add(bookId);
+        }
+        setSelectedBooks(newSelection);
     };
 
     const filteredBooks = books.filter(b =>
@@ -115,13 +149,22 @@ export default function Books() {
                 </div>
             ) : filteredBooks.length > 0 ? (
                 <>
-                    {viewMode === 'grid' ? (
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    {viewMode === 'grid' && (
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
                             {filteredBooks.map(book => (
-                                <BookCard key={book.id} book={book} />
+                                <div key={book.id} className="relative">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedBooks.has(book.id)}
+                                        onChange={() => toggleBookSelection(book.id)}
+                                        className="absolute top-2 left-2 z-10 w-5 h-5 cursor-pointer"
+                                    />
+                                    <BookCard book={book} />
+                                </div>
                             ))}
                         </div>
-                    ) : (
+                    )}
+                    {viewMode === 'list' && (
                         <div className="glass-panel rounded-xl overflow-hidden">
                             <table className="w-full text-left">
                                 <thead className="bg-[var(--bg-secondary)] text-[var(--text-secondary)] text-sm uppercase tracking-wider font-medium">

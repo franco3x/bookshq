@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
-import { db } from './database/db';
-import { books, authors, highlights, userStats } from './database/schema';
-import { eq, desc, sql, gt } from 'drizzle-orm';
+import { db } from './database/db.js';
+import { books, authors, highlights, userStats, categoryLevels, authorLevels } from './database/schema.js';
+import { eq, desc, sql, gt, and } from 'drizzle-orm';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -133,6 +133,31 @@ app.post('/api/books/:id/read', async (req, res) => {
             xpAwarded: isFirstRead ? 100 : 50,
             ...xpResult
         });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Bulk update tags for multiple books
+app.post('/api/books/bulk/tags', async (req, res) => {
+    try {
+        const { bookIds, tags } = req.body;
+
+        if (!Array.isArray(bookIds) || bookIds.length === 0) {
+            return res.status(400).json({ error: 'bookIds must be a non-empty array' });
+        }
+
+        if (!Array.isArray(tags)) {
+            return res.status(400).json({ error: 'tags must be an array' });
+        }
+
+        // Update all specified books with the new tags
+        const { inArray } = await import('drizzle-orm');
+        await db.update(books)
+            .set({ tags })
+            .where(inArray(books.id, bookIds));
+
+        res.json({ success: true, updated: bookIds.length });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
@@ -390,20 +415,66 @@ app.get('/api/search', async (req, res) => {
 
 app.get('/api/stats', async (req, res) => {
     try {
-        // Basic stats for now
-        const [stats] = await db.select().from(userStats).limit(1);
-        const highlightCount = await db.select({ count: sql`count(*)` }).from(highlights);
-        const bookCount = await db.select({ count: sql`count(*)` }).from(books);
-        const readBookCount = await db.select({ count: sql`count(*)` })
+        const stats = await db.query.userStats.findFirst();
+
+        // Count total highlights
+        const highlightsCount = await db
+            .select({ count: sql`count(*)`.mapWith(Number) })
+            .from(highlights);
+
+        // Count total books (Total Libary)
+        const booksCount = await db
+            .select({ count: sql`count(*)`.mapWith(Number) })
+            .from(books);
+
+        // Count books read (readCount > 0)
+        const booksReadCount = await db
+            .select({ count: sql`count(*)`.mapWith(Number) })
             .from(books)
             .where(gt(books.readCount, 0));
 
         res.json({
             ...stats,
-            totalHighlights: highlightCount[0].count,
-            totalBooks: bookCount[0].count,
-            booksRead: readBookCount[0].count
+            totalHighlights: highlightsCount[0].count,
+            totalBooks: booksCount[0].count,
+            booksRead: booksReadCount[0].count
         });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Category Levels (Genres, Demographics, Tags)
+app.get('/api/stats/categories', async (req, res) => {
+    try {
+        const categories = await db.query.categoryLevels.findMany({
+            orderBy: [desc(categoryLevels.level), desc(categoryLevels.xp)]
+        });
+
+        // Group by type for easier frontend consumption
+        const grouped = {
+            genre: categories.filter(c => c.categoryType === 'genre'),
+            tag: categories.filter(c => c.categoryType === 'tag'),
+            gender: categories.filter(c => c.categoryType === 'gender'),
+            race: categories.filter(c => c.categoryType === 'race'),
+            nationality: categories.filter(c => c.categoryType === 'nationality'),
+        };
+
+        res.json(grouped);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Author Rankings (Top Leveled Authors)
+app.get('/api/stats/authors/rankings', async (req, res) => {
+    try {
+        const rankings = await db.query.authorLevels.findMany({
+            with: { author: true },
+            orderBy: [desc(authorLevels.level), desc(authorLevels.xp)],
+            limit: 50
+        });
+        res.json(rankings);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

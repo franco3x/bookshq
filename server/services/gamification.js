@@ -47,9 +47,9 @@ export async function onHighlightAdded(count = 1) {
     return await addXP(count * XP_CONFIG.PER_HIGHLIGHT);
 }
 
-// Advanced Hook for granular XP (Genre, Author, Demographics)
+// Advanced Hook for granular XP (Genre, Author, Demographics, Tags)
 export async function onHighlightAddedWithContext(highlightsData) {
-    // highlightsData = [{ authorId, bookId, genre, gender, race, nationality }]
+    // highlightsData = [{ authorId, bookId, genre, gender, race, nationality, tags }]
     const xpPerHighlight = XP_CONFIG.PER_HIGHLIGHT;
 
     // 1. Award Global XP
@@ -59,12 +59,20 @@ export async function onHighlightAddedWithContext(highlightsData) {
     // 2. Aggregate counts to minimize DB writes
     const genreCounts = {};
     const authorCounts = {};
+    const tagCounts = {};
     const demoCounts = { gender: {}, race: {}, nationality: {} };
 
     for (const h of highlightsData) {
         // Genre
         if (h.genre) {
             genreCounts[h.genre] = (genreCounts[h.genre] || 0) + xpPerHighlight;
+        }
+
+        // Custom Tags (supports multiple tags per book)
+        if (h.tags && Array.isArray(h.tags)) {
+            for (const tag of h.tags) {
+                tagCounts[tag] = (tagCounts[tag] || 0) + xpPerHighlight;
+            }
         }
 
         // Author
@@ -81,6 +89,9 @@ export async function onHighlightAddedWithContext(highlightsData) {
     // 3. Update Category Levels
     for (const [genre, amount] of Object.entries(genreCounts)) {
         await addCategoryXP('genre', genre, amount);
+    }
+    for (const [tag, amount] of Object.entries(tagCounts)) {
+        await addCategoryXP('tag', tag, amount);
     }
     for (const [gender, amount] of Object.entries(demoCounts.gender)) {
         await addCategoryXP('gender', gender, amount);
