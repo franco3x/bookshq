@@ -3,6 +3,16 @@ import { api } from '../utils/api';
 import ProgressMeter from '../components/ProgressMeter';
 import { Trophy, Zap, BookOpen, Highlighter } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ErrorBoundary } from 'react-error-boundary';
+
+function ErrorFallback({ error }) {
+    return (
+        <div role="alert" className="p-4 bg-red-500/10 border border-red-500 rounded-lg text-red-500">
+            <p className="font-bold">Something went wrong:</p>
+            <pre className="text-xs mt-2 overflow-auto">{error.message}</pre>
+        </div>
+    );
+}
 
 export default function Stats() {
     const [stats, setStats] = useState(null);
@@ -174,7 +184,9 @@ export default function Stats() {
             ) : (
                 <div className="fade-in">
                     <React.Suspense fallback={<div className="p-8 text-center text-[var(--text-muted)]">Loading trophies...</div>}>
-                        <AchievementsList />
+                        <ErrorBoundary FallbackComponent={ErrorFallback}>
+                            <AchievementsList />
+                        </ErrorBoundary>
                     </React.Suspense>
                 </div>
             )}

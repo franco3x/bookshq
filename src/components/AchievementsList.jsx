@@ -8,10 +8,16 @@ import { format } from 'date-fns';
 export default function AchievementsList() {
     const [achievements, setAchievements] = useState([]);
     const [loading, setLoading] = useState(true);
+    // State for expanded categories
+    const [expandedCategories, setExpandedCategories] = useState({});
 
     useEffect(() => {
         loadAchievements();
     }, []);
+
+    const toggleCategory = (category) => {
+        setExpandedCategories(prev => ({ ...prev, [category]: !prev[category] }));
+    };
 
     const loadAchievements = async () => {
         try {
@@ -26,13 +32,37 @@ export default function AchievementsList() {
 
     if (loading) return <div className="p-8 text-center text-[var(--text-muted)]">Loading trophies...</div>;
 
-    // Group by category
-    const categories = [...new Set(achievements.map(a => a.category))];
+    // Group by category (filter out nulls)
+    const categorySet = new Set(achievements.map(a => a.category).filter(Boolean));
+    const categories = [...categorySet];
+
+    // Custom Sort Order
+    const sortOrder = ['Collector', 'Reader', 'Highlighter'];
+    categories.sort((a, b) => {
+        const indexA = sortOrder.indexOf(a);
+        const indexB = sortOrder.indexOf(b);
+        // If both are in the priority list, sort by index
+        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+        // If only A is in list, A comes first
+        if (indexA !== -1) return -1;
+        // If only B is in list, B comes first
+        if (indexB !== -1) return 1;
+        // Otherwise alphabetical, handling potential null/undefined
+        return (a || '').localeCompare(b || '');
+    });
+
+
 
     return (
         <div className="space-y-8">
             {categories.map(category => {
                 const categoryAchievements = achievements.filter(a => a.category === category);
+                const isPriority = sortOrder.includes(category);
+
+                // Show all if priority, otherwise show max 6 unless expanded
+                const showCount = (isPriority || expandedCategories[category]) ? categoryAchievements.length : 6;
+                const visibleAchievements = categoryAchievements.slice(0, showCount);
+                // const hasHidden = categoryAchievements.length > 6 && !isPriority && !expandedCategories[category];
 
                 return (
                     <div key={category}>
@@ -44,33 +74,35 @@ export default function AchievementsList() {
                         </h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {categoryAchievements.map(achievement => {
-                                const IconComponent = Icons[achievement.icon] || Trophy;
+                            {visibleAchievements.map(achievement => {
+                                const IconComponent = (achievement.icon && Icons[achievement.icon]) ? Icons[achievement.icon] : Trophy;
                                 const isUnlocked = achievement.unlocked;
+                                const unlockedDate = achievement.unlockedAt ? new Date(achievement.unlockedAt) : null;
+                                const isValidDate = unlockedDate && !isNaN(unlockedDate);
 
                                 return (
                                     <div
                                         key={achievement.id}
                                         className={`relative p-4 rounded-xl border transition-all ${isUnlocked
-                                                ? 'bg-[var(--bg-secondary)] border-[var(--glass-border)]'
-                                                : 'bg-[var(--bg-tertiary)]/30 border-dashed border-[var(--glass-border)] opacity-60'
+                                            ? 'bg-[var(--bg-secondary)] border-[var(--glass-border)]'
+                                            : 'bg-[var(--bg-tertiary)]/30 border-dashed border-[var(--glass-border)] opacity-60'
                                             }`}
                                     >
                                         <div className="flex gap-4">
                                             <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${isUnlocked
-                                                    ? 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]'
-                                                    : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
+                                                ? 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]'
+                                                : 'bg-[var(--bg-tertiary)] text-[var(--text-muted)]'
                                                 }`}>
                                                 {isUnlocked ? <IconComponent size={24} /> : <Lock size={20} />}
                                             </div>
 
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex justify-between items-start">
-                                                    <h4 className={`font-bold truncate ${isUnlocked ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <h4 className={`font-bold text-sm leading-tight ${isUnlocked ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>
                                                         {achievement.title}
                                                     </h4>
                                                     {isUnlocked && (
-                                                        <span className="text-[10px] text-[var(--accent-gold)] px-1.5 py-0.5 bg-[var(--accent-gold)]/10 rounded border border-[var(--accent-gold)]/20">
+                                                        <span className="text-[10px] text-[var(--accent-gold)] px-1.5 py-0.5 bg-[var(--accent-gold)]/10 rounded border border-[var(--accent-gold)]/20 whitespace-nowrap flex-shrink-0">
                                                             +{achievement.xpReward} XP
                                                         </span>
                                                     )}
@@ -96,10 +128,10 @@ export default function AchievementsList() {
                                                     </div>
                                                 )}
 
-                                                {isUnlocked && (
+                                                {isUnlocked && isValidDate && (
                                                     <div className="mt-3 text-[10px] text-[var(--text-muted)] flex items-center gap-1">
                                                         <Star size={10} className="text-[var(--accent-gold)]" fill="currentColor" />
-                                                        Unlocked {format(new Date(achievement.unlockedAt), 'MMM d, yyyy')}
+                                                        Unlocked {format(unlockedDate, 'MMM d, yyyy')}
                                                     </div>
                                                 )}
                                             </div>
@@ -108,6 +140,16 @@ export default function AchievementsList() {
                                 );
                             })}
                         </div>
+
+                        {/* Pagination Toggle */}
+                        {categoryAchievements.length > 6 && !isPriority && (
+                            <button
+                                onClick={() => toggleCategory(category)}
+                                className="mt-4 text-xs font-medium text-[var(--accent-primary)] hover:underline flex items-center gap-1"
+                            >
+                                {expandedCategories[category] ? 'Show Less' : `Show All (${categoryAchievements.length})`}
+                            </button>
+                        )}
                     </div>
                 );
             })}

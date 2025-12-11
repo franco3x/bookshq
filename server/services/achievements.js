@@ -7,13 +7,33 @@ import { eq, and, count, gte, sql } from 'drizzle-orm';
  * Checks and awards achievements for a user.
  * triggers: 'READ', 'HIGHLIGHT', 'IMPORT', 'STREAK', 'ALL'
  */
+// --- Helpers for Dynamic Achievements ---
+const DYNAMIC_TIERS = [
+    { level: 1, count: 1, name: 'Student', suffix: 'Explorer' },
+    { level: 2, count: 3, name: 'Novice', suffix: 'Tourist' },
+    { level: 3, count: 10, name: 'Devotee', suffix: 'Resident' },
+    { level: 4, count: 25, name: 'Aficionado', suffix: 'Citizen' },
+    { level: 5, count: 50, name: 'Authority', suffix: 'Ambassador' }
+];
+
+const VOCATION_TITLES = [
+    { level: 1, prefix: 'Curious' },
+    { level: 2, prefix: 'Apprentice' },
+    { level: 3, prefix: 'Journeyman' },
+    { level: 4, prefix: 'Master' },
+    { level: 5, prefix: 'Grandmaster' }
+];
+
+/**
+ * Checks and awards achievements for a user.
+ * triggers: 'READ', 'HIGHLIGHT', 'IMPORT', 'STREAK', 'ALL'
+ */
 export async function checkAchievements(userId = 1, triggers = ['ALL']) {
     console.log(`🏆 Checking achievements for User ${userId}...`);
     const newUnlocks = [];
 
     try {
         // 1. Fetch Current Stats
-        // We calculate these live to ensure accuracy
         const [booksReadRes] = await db.select({ count: count() }).from(books).where(sql`${books.readCount} > 0`);
         const booksRead = booksReadRes.count;
 
@@ -23,59 +43,166 @@ export async function checkAchievements(userId = 1, triggers = ['ALL']) {
         const [highlightsRes] = await db.select({ count: count() }).from(highlights);
         const totalHighlights = highlightsRes.count;
 
-        // Start Transaction to Ensure Consistency
-        await db.transaction(async (tx) => {
-            // 2. Fetch All Achievements
-            const allAchievements = await tx.select().from(achievements);
+        // --- Aggregations for Dynamic Categories ---
+        // Genre Counts
+        const booksWithGenre = await db.query.books.findMany({
+            where: sql`${books.readCount} > 0`,
+            columns: { genre: true }
+        });
+        const genreCounts = {};
+        for (const b of booksWithGenre) {
+            if (b.genre) genreCounts[b.genre] = (genreCounts[b.genre] || 0) + 1;
+        }
 
-            // 3. Fetch User's Existing Unlocks
+        // Author Stats (Nationality, Vocation)
+        const booksWithAuthors = await db.query.books.findMany({
+            where: sql`${books.readCount} > 0`,
+            with: {
+                bookAuthors: {
+                    with: { author: true }
+                }
+            }
+        });
+
+        const nationalityCounts = {};
+        const vocationCounts = {};
+
+        // Helper: Iterate all authors of read books
+        for (const b of booksWithAuthors) {
+            for (const ba of b.bookAuthors) {
+                const author = ba.author;
+                if (!author) continue;
+
+                if (author.nationality) {
+                    const nats = Array.isArray(author.nationality) ? author.nationality : [author.nationality];
+                    for (const n of nats) {
+                        const key = n.trim();
+                        nationalityCounts[key] = (nationalityCounts[key] || 0) + 1;
+                    }
+                }
+
+                if (author.vocation) {
+                    const vocs = Array.isArray(author.vocation) ? author.vocation : [author.vocation];
+                    for (const v of vocs) {
+                        const key = v.trim();
+                        vocationCounts[key] = (vocationCounts[key] || 0) + 1;
+                    }
+                }
+            }
+        }
+
+        // --- JIT Creation & Checks ---
+        await db.transaction(async (tx) => {
+            // Function to handle dynamic check/creation
+            const processDynamicCategory = async (counts, categoryType, getNaming) => {
+                for (const [key, userCount] of Object.entries(counts)) {
+                    for (const tier of DYNAMIC_TIERS) {
+                        if (userCount >= tier.count) {
+                            // Construct Code: GENRE_MYSTERY_10
+                            const safeKey = key.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+                            const code = `${categoryType.toUpperCase()}_${safeKey}_${tier.count}`;
+
+                            // Check if definition exists (cache this?)
+                            let achievement = await tx.query.achievements.findFirst({
+                                where: eq(achievements.code, code)
+                            });
+
+                            // JIT Create Definition
+                            if (!achievement) {
+                                const { title, description } = getNaming(key, tier);
+                                const icon = categoryType === 'Genre' ? 'Book' : (categoryType === 'Nationality' ? 'Globe' : 'Briefcase');
+
+                                [achievement] = await tx.insert(achievements).values({
+                                    code,
+                                    title,
+                                    description,
+                                    icon,
+                                    xpReward: tier.level === 1 ? 250 : (tier.level === 2 ? 1000 : (tier.level === 3 ? 5000 : (tier.level === 4 ? 25000 : 100000))),
+                                    category: categoryType, // Grouping
+                                    conditionType: 'SPECIFIC',
+                                    conditionValue: tier.count
+                                }).returning();
+
+                                console.log(`✨ JIT Created System Achievement: ${title} (${code})`);
+                            }
+
+                            // Check User Unlock
+                            const existing = await tx.query.userAchievements.findFirst({
+                                where: and(
+                                    eq(userAchievements.userId, userId),
+                                    eq(userAchievements.achievementId, achievement.id)
+                                )
+                            });
+
+                            if (!existing) {
+                                await tx.insert(userAchievements).values({
+                                    userId,
+                                    achievementId: achievement.id,
+                                    unlockedAt: new Date(),
+                                    progress: userCount
+                                });
+                                newUnlocks.push({ ...achievement, unlockedAt: new Date() });
+                                console.log(`🎉 Unlocked Dynamic: ${achievement.title}`);
+                            }
+                        }
+                    }
+                }
+            };
+
+            // Run Processors
+            await processDynamicCategory(genreCounts, 'Genre', (key, tier) => ({
+                title: `${tier.name} of ${key}`,
+                description: `Read ${tier.count} ${key} books`
+            }));
+
+            await processDynamicCategory(nationalityCounts, 'Global', (key, tier) => ({
+                title: tier.level === 1 ? `Visitor to ${key}` : (tier.level === 5 ? `Ambassador of ${key}` : `${tier.suffix} of ${key}`), // Simple logic for now
+                description: `Read ${tier.count} authors from ${key}`
+            }));
+
+            await processDynamicCategory(vocationCounts, 'Vocation', (key, tier) => {
+                const vocTitle = VOCATION_TITLES.find(v => v.level === tier.level)?.prefix || 'Expert';
+                return {
+                    title: `${vocTitle} ${key}`,
+                    description: `Read ${tier.count} books by ${key}s`
+                };
+            });
+
+            // --- Standard Static Checks (Reader, Collector, etc.) ---
+            const allAchievements = await tx.select().from(achievements).where(eq(achievements.conditionType, 'COUNT'));
             const existingUnlocks = await tx.select().from(userAchievements).where(eq(userAchievements.userId, userId));
             const unlockedIds = new Set(existingUnlocks.map(ua => ua.achievementId));
 
-            // 4. Evaluate Conditions
             for (const achievement of allAchievements) {
-                // Skip if already unlocked
                 if (unlockedIds.has(achievement.id)) continue;
 
                 let isUnlocked = false;
                 let progress = 0;
 
-                // Condition Logic
-                switch (achievement.conditionType) {
-                    case 'COUNT':
-                        if (achievement.category === 'Reader') {
-                            progress = booksRead;
-                            isUnlocked = booksRead >= achievement.conditionValue;
-                        } else if (achievement.category === 'Collector') {
-                            progress = booksImported;
-                            isUnlocked = booksImported >= achievement.conditionValue;
-                        } else if (achievement.category === 'Highlighter') {
-                            progress = totalHighlights;
-                            isUnlocked = totalHighlights >= achievement.conditionValue;
-                        }
+                switch (achievement.category) {
+                    case 'Reader':
+                        progress = booksRead;
+                        isUnlocked = booksRead >= achievement.conditionValue;
                         break;
-
-                    case 'STREAK':
-                        // TODO: Implement Streak Logic
+                    case 'Collector':
+                        progress = booksImported;
+                        isUnlocked = booksImported >= achievement.conditionValue;
+                        break;
+                    case 'Highlighter':
+                        progress = totalHighlights;
+                        isUnlocked = totalHighlights >= achievement.conditionValue;
                         break;
                 }
 
                 if (isUnlocked) {
-                    // Award the Achievement!
                     await tx.insert(userAchievements).values({
                         userId,
                         achievementId: achievement.id,
                         unlockedAt: new Date(),
                         progress: progress
                     });
-
-                    // Add Query to returned list (enriched)
-                    newUnlocks.push({
-                        ...achievement,
-                        unlockedAt: new Date()
-                    });
-
-                    console.log(`🎉 Unlocked: ${achievement.title}`);
+                    newUnlocks.push({ ...achievement, unlockedAt: new Date() });
+                    console.log(`🎉 Unlocked Static: ${achievement.title}`);
                 }
             }
         });
