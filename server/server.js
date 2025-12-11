@@ -140,13 +140,13 @@ app.post('/api/books/:id/read', async (req, res) => {
             })
             .where(eq(books.id, bookId));
 
-        // Trigger XP Recalculation
-        const { recalculateStats } = await import('./services/stats.js');
-        await recalculateStats().catch(console.error);
-
-        // Check Achievements
+        // Check Achievements first (so they count towards stats)
         const { checkAchievements } = await import('./services/achievements.js');
         const newAchievements = await checkAchievements(1, ['READ']).catch(console.error);
+
+        // Trigger XP Recalculation (includes new achievements)
+        const { recalculateStats } = await import('./services/stats.js');
+        await recalculateStats().catch(console.error);
 
         const xpResult = await db.query.userStats.findFirst();
 
@@ -164,14 +164,16 @@ app.post('/api/books/:id/read', async (req, res) => {
 // Manual Recalculate Stats Endpoint
 app.post('/api/stats/recalculate', async (req, res) => {
     try {
+        // Check achievements first
+        const { checkAchievements } = await import('./services/achievements.js');
+        await checkAchievements(1, ['ALL']);
+
+        // Then recalculate stats
         const { recalculateStats } = await import('./services/stats.js');
         const success = await recalculateStats();
 
         if (success) {
-            // Also check achievements manually
-            const { checkAchievements } = await import('./services/achievements.js');
-            await checkAchievements(1, ['ALL']);
-            res.json({ success: true, message: 'Stats recalculated and achievements checked' });
+            res.json({ success: true, message: 'Achievements checked and stats recalculated' });
         } else {
             res.status(500).json({ error: 'Recalculation failed check server logs' });
         }
@@ -185,6 +187,11 @@ app.post('/api/achievements/check', async (req, res) => {
     try {
         const { checkAchievements } = await import('./services/achievements.js');
         const newUnlocks = await checkAchievements(1, ['ALL']);
+
+        // Recalculate stats to include new XP
+        const { recalculateStats } = await import('./services/stats.js');
+        await recalculateStats().catch(console.error);
+
         res.json({ success: true, newUnlocks });
     } catch (e) {
         res.status(500).json({ error: e.message });
