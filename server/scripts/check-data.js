@@ -13,6 +13,13 @@ async function checkData() {
         console.log(`✍️  Authors: ${authorCount.length}`);
         console.log(`💡 Highlights: ${highlightCount.length}`);
 
+        // Try to access tags
+        if (bookCount.length > 0) {
+            console.log('Testing tags column access...');
+            const bookWithTags = await db.select({ tags: books.tags }).from(books).limit(1);
+            console.log('✅ Tags column accessible:', bookWithTags[0]);
+        }
+
         if (bookCount.length > 0) {
             console.log('\n✅ Data exists! It might just be a display issue.');
         } else {

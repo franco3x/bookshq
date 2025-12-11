@@ -5,6 +5,8 @@ import { Trophy, Zap, BookOpen, Highlighter } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Stats() {
+    const [stats, setStats] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [categories, setCategories] = useState(null);
     const [topAuthors, setTopAuthors] = useState(null);
 

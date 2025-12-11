@@ -497,7 +497,7 @@ app.get('/api/stats/authors/rankings', async (req, res) => {
         const rankings = await db.query.authorLevels.findMany({
             with: { author: true },
             orderBy: [desc(authorLevels.level), desc(authorLevels.xp)],
-            limit: 50
+            limit: 50,
         });
         res.json(rankings);
     } catch (e) {

@@ -10,4 +10,7 @@ export const client = new pg.Pool({
     connectionString: process.env.DATABASE_URL,
 });
 
+console.log('🔌 Initializing DB with schema keys:', Object.keys(schema));
+console.log('🔗 authorLevelsRelations present:', !!schema.authorLevelsRelations);
+
 export const db = drizzle(client, { schema });

@@ -113,3 +113,10 @@ export const highlightsRelations = relations(highlights, ({ one }) => ({
         references: [authors.id],
     }),
 }));
+
+export const authorLevelsRelations = relations(authorLevels, ({ one }) => ({
+    author: one(authors, {
+        fields: [authorLevels.authorId],
+        references: [authors.id],
+    }),
+}));
