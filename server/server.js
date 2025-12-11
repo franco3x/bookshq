@@ -163,15 +163,16 @@ app.post('/api/books/bulk/tags', async (req, res) => {
     }
 });
 
-// Update book details (e.g., genre)
+// Update book details (e.g., genre, dateLastRead)
 app.patch('/api/books/:id', async (req, res) => {
     try {
         const bookId = parseInt(req.params.id);
-        const { genre } = req.body;
+        const { genre, dateLastRead } = req.body;
 
         // Construct update object with only provided fields
         const updateData = {};
         if (genre !== undefined) updateData.genre = genre;
+        if (dateLastRead !== undefined) updateData.dateLastRead = new Date(dateLastRead);
 
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({ error: 'No fields to update' });

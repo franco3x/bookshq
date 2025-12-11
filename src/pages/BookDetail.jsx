@@ -30,6 +30,9 @@ export default function BookDetail() {
     const [isEditingGenre, setIsEditingGenre] = useState(false);
     const [genreInput, setGenreInput] = useState('');
 
+    const [isEditingDate, setIsEditingDate] = useState(false);
+    const [dateInput, setDateInput] = useState('');
+
     const handleSaveTags = async () => {
         try {
             const newTags = tagInput.split(',').map(t => t.trim()).filter(Boolean);
@@ -53,6 +56,20 @@ export default function BookDetail() {
         } catch (error) {
             console.error('Failed to update genre:', error);
             alert('Failed to update genre');
+        }
+    };
+
+    const handleSaveDate = async () => {
+        try {
+            if (!dateInput) return;
+            const newDate = new Date(dateInput);
+
+            await api.updateBook(book.id, { dateLastRead: newDate.toISOString() });
+            setBook(prev => ({ ...prev, dateLastRead: newDate.toISOString() }));
+            setIsEditingDate(false);
+        } catch (error) {
+            console.error('Failed to update date:', error);
+            alert('Failed to update date');
         }
     };
 
@@ -216,12 +233,61 @@ export default function BookDetail() {
                                 )}
                             </div>
 
-                            {book.dateLastRead && (
-                                <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2">
-                                    <Clock size={16} className="text-[var(--accent-secondary)]" />
-                                    <span>Last read {new Date(book.dateLastRead).getFullYear()}</span>
-                                </div>
-                            )}
+                            <div className="flex items-center gap-2">
+                                {isEditingDate ? (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="date"
+                                            value={dateInput}
+                                            onChange={(e) => setDateInput(e.target.value)}
+                                            className="bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-2 py-1.5 text-sm outline-none focus:border-[var(--accent-secondary)]"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleSaveDate();
+                                                if (e.key === 'Escape') setIsEditingDate(false);
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleSaveDate}
+                                            className="px-3 py-1.5 bg-[var(--accent-secondary)] text-white text-xs font-bold rounded-lg hover:brightness-110"
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            onClick={() => setIsEditingDate(false)}
+                                            className="px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs font-medium rounded-lg hover:bg-[var(--glass-border)]"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-1 group">
+                                        <div className={`px-4 py-2 rounded-full border flex items-center gap-2 ${book.dateLastRead
+                                            ? 'bg-white/5 border-white/10'
+                                            : 'bg-[var(--bg-tertiary)]/50 border-dashed border-[var(--text-muted)]/30 text-[var(--text-muted)]'
+                                            }`}>
+                                            <Clock size={16} className={book.dateLastRead ? "text-[var(--accent-secondary)]" : ""} />
+                                            <span className={!book.dateLastRead ? "italic" : ""}>
+                                                {book.dateLastRead
+                                                    ? `Last read ${new Date(book.dateLastRead).getFullYear()}`
+                                                    : 'Set read date'}
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                // Default to today or existing date
+                                                const d = book.dateLastRead ? new Date(book.dateLastRead) : new Date();
+                                                setDateInput(d.toISOString().split('T')[0]);
+                                                setIsEditingDate(true);
+                                            }}
+                                            className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors rounded-full hover:bg-[var(--glass-highlight)]"
+                                            title="Edit date"
+                                        >
+                                            <Highlighter size={14} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
 
                             {book.readCount > 0 && (
                                 <div className="px-4 py-2 rounded-full bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 text-[var(--accent-primary)] flex items-center gap-2">
