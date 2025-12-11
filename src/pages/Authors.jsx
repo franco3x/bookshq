@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../utils/api';
 import AuthorCard from '../components/AuthorCard';
-import { Users, Search, LayoutGrid, List as ListIcon, BookOpen, Highlighter } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Users, Search, LayoutGrid, List as ListIcon, BookOpen, Highlighter, RefreshCw } from 'lucide-react';
 
 export default function Authors() {
     const [authors, setAuthors] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [recalcLoading, setRecalcLoading] = useState(false);
     const [filter, setFilter] = useState('');
     const [viewMode, setViewMode] = useState('grid');
     const [sortBy, setSortBy] = useState('level-desc'); // level-desc, name-asc, name-desc, books-desc, books-asc, highlights-desc
@@ -23,6 +23,22 @@ export default function Authors() {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleRecalculateStats = async () => {
+        if (recalcLoading) return;
+        setRecalcLoading(true);
+        try {
+            await fetch('/api/stats/recalculate', { method: 'POST' });
+            // Reload authors to show new levels
+            await loadAuthors();
+            alert('Stats updated successfully!');
+        } catch (error) {
+            console.error(error);
+            alert('Failed to update stats');
+        } finally {
+            setRecalcLoading(false);
         }
     };
 
@@ -57,9 +73,20 @@ export default function Authors() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold font-display mb-1">Authors</h1>
-                    <p className="text-[var(--text-secondary)]">
-                        {authors.length} authors in your library
-                    </p>
+                    <div className="flex items-center gap-3">
+                        <p className="text-[var(--text-secondary)]">
+                            {authors.length} authors in your library
+                        </p>
+                        <button
+                            onClick={handleRecalculateStats}
+                            disabled={recalcLoading}
+                            className="text-xs flex items-center gap-1.5 px-2 py-1 rounded-full bg-[var(--bg-tertiary)] hover:bg-[var(--glass-border)] text-[var(--accent-primary)] font-medium transition-colors disabled:opacity-50"
+                            title="Recalculate XP & Levels"
+                        >
+                            <RefreshCw size={12} className={recalcLoading ? "animate-spin" : ""} />
+                            {recalcLoading ? 'Updating...' : 'Update Stats'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex items-center gap-3">

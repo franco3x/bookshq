@@ -140,9 +140,11 @@ app.post('/api/books/:id/read', async (req, res) => {
             })
             .where(eq(books.id, bookId));
 
-        // Award XP for reading
-        const { onBookRead } = await import('./services/gamification.js');
-        const xpResult = await onBookRead(isFirstRead);
+        // Trigger XP Recalculation
+        const { recalculateStats } = await import('./services/stats.js');
+        recalculateStats().catch(console.error);
+
+        const xpResult = await db.query.userStats.findFirst();
 
         res.json({
             success: true,
@@ -150,6 +152,21 @@ app.post('/api/books/:id/read', async (req, res) => {
             xpAwarded: isFirstRead ? 100 : 50,
             ...xpResult
         });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Manual Recalculate Stats Endpoint
+app.post('/api/stats/recalculate', async (req, res) => {
+    try {
+        const { recalculateStats } = await import('./services/stats.js');
+        const success = await recalculateStats();
+        if (success) {
+            res.json({ success: true, message: 'Stats recalculated successfully' });
+        } else {
+            res.status(500).json({ error: 'Recalculation failed check server logs' });
+        }
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
