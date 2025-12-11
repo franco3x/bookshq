@@ -92,12 +92,31 @@ export const categoryLevels = pgTable('category_levels', {
     uniqueCategory: uniqueIndex('unique_category_idx').on(t.categoryType, t.categoryValue),
 }));
 
-// Achievements
+// Achievements Definition
 export const achievements = pgTable('achievements', {
     id: serial('id').primaryKey(),
-    achievementType: text('achievement_type').notNull().unique(), // e.g., 'first_100', 'read_5_history'
-    earnedAt: timestamp('earned_at').defaultNow().notNull(),
+    code: text('code').notNull().unique(), // e.g. 'READ_10'
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    icon: text('icon'), // Lucide icon name or emoji
+    xpReward: integer('xp_reward').default(0).notNull(),
+    category: text('category').default('General'), // 'General', 'Streak', 'Genre'
+    conditionType: text('condition_type').notNull(), // 'COUNT', 'STREAK', 'LEVEL', 'SPECIFIC'
+    conditionValue: integer('condition_value').default(0),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+// User Achievements (Unlock Status)
+export const userAchievements = pgTable('user_achievements', {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id').default(1), // Single user app, default to 1
+    achievementId: integer('achievement_id').references(() => achievements.id).notNull(),
+    unlockedAt: timestamp('unlocked_at'),
+    progress: integer('progress').default(0),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (t) => ({
+    uniqueUserAchievement: uniqueIndex('unique_user_achievement_idx').on(t.userId, t.achievementId),
+}));
 
 // Relations
 export const authorsRelations = relations(authors, ({ many }) => ({
@@ -141,5 +160,12 @@ export const authorLevelsRelations = relations(authorLevels, ({ one }) => ({
     author: one(authors, {
         fields: [authorLevels.authorId],
         references: [authors.id],
+    }),
+}));
+
+export const userAchievementsRelations = relations(userAchievements, ({ one }) => ({
+    achievement: one(achievements, {
+        fields: [userAchievements.achievementId],
+        references: [achievements.id],
     }),
 }));

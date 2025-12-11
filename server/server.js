@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { db } from './database/db.js';
-import { books, authors, highlights, userStats, categoryLevels, authorLevels, bookAuthors } from './database/schema.js';
+import { books, authors, highlights, userStats, categoryLevels, authorLevels, bookAuthors, achievements, userAchievements } from './database/schema.js';
 import { eq, desc, sql, gt, and, ne } from 'drizzle-orm';
 import * as dotenv from 'dotenv';
 
@@ -142,7 +142,11 @@ app.post('/api/books/:id/read', async (req, res) => {
 
         // Trigger XP Recalculation
         const { recalculateStats } = await import('./services/stats.js');
-        recalculateStats().catch(console.error);
+        await recalculateStats().catch(console.error);
+
+        // Check Achievements
+        const { checkAchievements } = await import('./services/achievements.js');
+        const newAchievements = await checkAchievements(1, ['READ']).catch(console.error);
 
         const xpResult = await db.query.userStats.findFirst();
 
@@ -162,11 +166,55 @@ app.post('/api/stats/recalculate', async (req, res) => {
     try {
         const { recalculateStats } = await import('./services/stats.js');
         const success = await recalculateStats();
+
         if (success) {
-            res.json({ success: true, message: 'Stats recalculated successfully' });
+            // Also check achievements manually
+            const { checkAchievements } = await import('./services/achievements.js');
+            await checkAchievements(1, ['ALL']);
+            res.json({ success: true, message: 'Stats recalculated and achievements checked' });
         } else {
             res.status(500).json({ error: 'Recalculation failed check server logs' });
         }
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Manual Achievement Check Endpoint
+app.post('/api/achievements/check', async (req, res) => {
+    try {
+        const { checkAchievements } = await import('./services/achievements.js');
+        const newUnlocks = await checkAchievements(1, ['ALL']);
+        res.json({ success: true, newUnlocks });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get User Achievements (List)
+app.get('/api/achievements', async (req, res) => {
+    try {
+        const allAchievements = await db.query.achievements.findMany({
+            orderBy: (achievements, { asc }) => [asc(achievements.xpReward)],
+        });
+
+        const userUnlocks = await db.query.userAchievements.findMany({
+            where: eq(userAchievements.userId, 1)
+        });
+
+        const unlockMap = new Map(userUnlocks.map(ua => [ua.achievementId, ua]));
+
+        const result = allAchievements.map(a => {
+            const unlock = unlockMap.get(a.id);
+            return {
+                ...a,
+                unlocked: !!unlock,
+                unlockedAt: unlock?.unlockedAt || null,
+                progress: unlock?.progress || 0
+            };
+        });
+
+        res.json(result);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

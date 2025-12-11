@@ -124,5 +124,11 @@ export const api = {
         const response = await fetch(`${API_BASE}/stats/authors/rankings`);
         if (!response.ok) throw new Error('Failed to fetch author rankings');
         return response.json();
+    },
+
+    getAchievements: async () => {
+        const response = await fetch(`${API_BASE}/achievements`);
+        if (!response.ok) throw new Error('Failed to fetch achievements');
+        return response.json();
     }
 };

@@ -1,5 +1,5 @@
 import { db } from '../database/db.ts';
-import { authors, authorLevels, books, highlights, categoryLevels, userStats } from '../database/schema.ts';
+import { authors, authorLevels, books, highlights, categoryLevels, userStats, userAchievements } from '../database/schema.ts';
 import { eq, sql } from 'drizzle-orm';
 
 // XP Constants
@@ -145,6 +145,22 @@ export async function recalculateStats() {
                 }
             }
         }
+
+        // --- Achievement XP ---
+        const unlockedAchievements = await db.query.userAchievements.findMany({
+            with: {
+                achievement: true
+            }
+        });
+
+        let achievementXP = 0;
+        for (const ua of unlockedAchievements) {
+            if (ua.achievement) {
+                achievementXP += ua.achievement.xpReward;
+            }
+        }
+        console.log(`🏆 Adding ${achievementXP} XP from ${unlockedAchievements.length} achievements...`);
+        totalGlobalXP += achievementXP;
 
         // Batched Updates (Transactional for safety and cleanup)
         await db.transaction(async (tx) => {

@@ -9,6 +9,7 @@ export default function Stats() {
     const [loading, setLoading] = useState(true);
     const [categories, setCategories] = useState(null);
     const [topAuthors, setTopAuthors] = useState(null);
+    const [activeTab, setActiveTab] = useState('overview');
 
     useEffect(() => {
         loadData();
@@ -35,20 +36,38 @@ export default function Stats() {
 
     // Calculate frontend derivables
     const currentXP = stats.totalXp || 0;
-    // Calculate level dynamically to ensure sync with XP (XP = 100 * Level^2)
-    // Level = sqrt(XP / 100)
     const currentLevel = Math.max(1, Math.floor(Math.sqrt(currentXP / 100)));
     const nextLevelXP = 100 * Math.pow(currentLevel + 1, 2);
 
-    // Get top stats
-    const topGenre = categories?.genre?.[0];
-    const topAuthor = topAuthors?.[0];
-
     return (
         <div className="space-y-8 max-w-4xl mx-auto">
-            <h1 className="text-3xl font-bold">Reader Profile</h1>
+            <div className="flex items-center justify-between">
+                <h1 className="text-3xl font-bold">Reader Profile</h1>
 
-            {/* Main Level Card */}
+                <div className="flex gap-2 p-1 bg-[var(--bg-tertiary)] rounded-lg">
+                    <button
+                        onClick={() => setActiveTab('overview')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'overview'
+                            ? 'bg-[var(--bg-primary)] text-[var(--accent-primary)] shadow-sm'
+                            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                            }`}
+                    >
+                        Overview
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('trophies')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'trophies'
+                            ? 'bg-[var(--bg-primary)] text-[var(--accent-gold)] shadow-sm'
+                            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+                            }`}
+                    >
+                        <Trophy size={16} />
+                        Trophies
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Level Card - Always visible */}
             <div className="glass-panel p-8 rounded-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-32 bg-[var(--accent-primary)]/10 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
 
@@ -68,87 +87,100 @@ export default function Stats() {
                 </div>
             </div>
 
-            {/* Top Insights */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Link to="/stats/categories" className="glass-panel p-6 rounded-xl hover:border-[var(--accent-primary)] transition-colors group">
-                    <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-bold text-lg flex items-center gap-2">
-                            <BookOpen size={20} className="text-[var(--accent-primary)]" />
-                            Top Genre
-                        </h3>
-                        <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">View All &rarr;</span>
+            {activeTab === 'overview' ? (
+                <div className="space-y-8 fade-in">
+                    {/* Top Insights */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Link to="/stats/categories" className="glass-panel p-6 rounded-xl hover:border-[var(--accent-primary)] transition-colors group">
+                            <div className="flex justify-between items-start mb-4">
+                                <h3 className="font-bold text-lg flex items-center gap-2">
+                                    <BookOpen size={20} className="text-[var(--accent-primary)]" />
+                                    Top Genre
+                                </h3>
+                                <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">View All &rarr;</span>
+                            </div>
+                            {categories?.genre?.[0] ? (
+                                <div>
+                                    <div className="text-2xl font-bold mb-1">{categories.genre[0].categoryValue}</div>
+                                    <div className="text-sm text-[var(--text-secondary)]">Level {categories.genre[0].level} • {categories.genre[0].xp.toLocaleString()} XP</div>
+                                </div>
+                            ) : (
+                                <div className="text-[var(--text-secondary)]">No genre data yet</div>
+                            )}
+                        </Link>
+
+                        <Link to="/stats/authors" className="glass-panel p-6 rounded-xl hover:border-[var(--accent-primary)] transition-colors group">
+                            <div className="flex justify-between items-start mb-4">
+                                <h3 className="font-bold text-lg flex items-center gap-2">
+                                    <Trophy size={20} className="text-[var(--accent-gold)]" />
+                                    Top Author
+                                </h3>
+                                <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">View Rankings &rarr;</span>
+                            </div>
+                            {topAuthors?.[0] ? (
+                                <div>
+                                    <div className="text-2xl font-bold mb-1">{topAuthors[0].author.name}</div>
+                                    <div className="text-sm text-[var(--text-secondary)]">Level {topAuthors[0].level} • {topAuthors[0].xp.toLocaleString()} XP</div>
+                                </div>
+                            ) : (
+                                <div className="text-[var(--text-secondary)]">No author data yet</div>
+                            )}
+                        </Link>
                     </div>
-                    {topGenre ? (
-                        <div>
-                            <div className="text-2xl font-bold mb-1">{topGenre.categoryValue}</div>
-                            <div className="text-sm text-[var(--text-secondary)]">Level {topGenre.level} • {topGenre.xp.toLocaleString()} XP</div>
+
+                    {/* Grid Stats */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
+                            <div className="p-3 bg-purple-500/20 text-purple-400 rounded-lg">
+                                <Zap size={24} />
+                            </div>
+                            <div>
+                                <div className="text-sm text-[var(--text-secondary)]">Total XP</div>
+                                <div className="text-2xl font-bold">{currentXP.toLocaleString()}</div>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="text-[var(--text-secondary)]">No genre data yet</div>
-                    )}
-                </Link>
 
-                <Link to="/stats/authors" className="glass-panel p-6 rounded-xl hover:border-[var(--accent-primary)] transition-colors group">
-                    <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-bold text-lg flex items-center gap-2">
-                            <Trophy size={20} className="text-[var(--accent-gold)]" />
-                            Top Author
-                        </h3>
-                        <span className="text-xs text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]">View Rankings &rarr;</span>
-                    </div>
-                    {topAuthor ? (
-                        <div>
-                            <div className="text-2xl font-bold mb-1">{topAuthor.author.name}</div>
-                            <div className="text-sm text-[var(--text-secondary)]">Level {topAuthor.level} • {topAuthor.xp.toLocaleString()} XP</div>
+                        <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
+                            <div className="p-3 bg-blue-500/20 text-blue-400 rounded-lg">
+                                <Highlighter size={24} />
+                            </div>
+                            <div>
+                                <div className="text-sm text-[var(--text-secondary)]">Highlights</div>
+                                <div className="text-2xl font-bold">{stats.totalHighlights}</div>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="text-[var(--text-secondary)]">No author data yet</div>
-                    )}
-                </Link>
-            </div>
 
-            {/* Grid Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
-                    <div className="p-3 bg-purple-500/20 text-purple-400 rounded-lg">
-                        <Zap size={24} />
-                    </div>
-                    <div>
-                        <div className="text-sm text-[var(--text-secondary)]">Total XP</div>
-                        <div className="text-2xl font-bold">{currentXP.toLocaleString()}</div>
-                    </div>
-                </div>
-                {/* ... existing stats ... */}
-                <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
-                    <div className="p-3 bg-blue-500/20 text-blue-400 rounded-lg">
-                        <Highlighter size={24} />
-                    </div>
-                    <div>
-                        <div className="text-sm text-[var(--text-secondary)]">Highlights</div>
-                        <div className="text-2xl font-bold">{stats.totalHighlights}</div>
-                    </div>
-                </div>
+                        <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
+                            <div className="p-3 bg-green-500/20 text-green-400 rounded-lg">
+                                <BookOpen size={24} />
+                            </div>
+                            <div>
+                                <div className="text-sm text-[var(--text-secondary)]">Books Read</div>
+                                <div className="text-2xl font-bold">{stats.booksRead || 0}</div>
+                            </div>
+                        </div>
 
-                <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
-                    <div className="p-3 bg-green-500/20 text-green-400 rounded-lg">
-                        <BookOpen size={24} />
-                    </div>
-                    <div>
-                        <div className="text-sm text-[var(--text-secondary)]">Books Read</div>
-                        <div className="text-2xl font-bold">{stats.booksRead || 0}</div>
-                    </div>
-                </div>
-
-                <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
-                    <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-lg">
-                        <BookOpen size={24} />
-                    </div>
-                    <div>
-                        <div className="text-sm text-[var(--text-secondary)]">Total Library</div>
-                        <div className="text-2xl font-bold">{stats.totalBooks}</div>
+                        <div className="glass-panel p-6 rounded-xl flex items-center gap-4">
+                            <div className="p-3 bg-indigo-500/20 text-indigo-400 rounded-lg">
+                                <BookOpen size={24} />
+                            </div>
+                            <div>
+                                <div className="text-sm text-[var(--text-secondary)]">Total Library</div>
+                                <div className="text-2xl font-bold">{stats.totalBooks}</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            ) : (
+                <div className="fade-in">
+                    <React.Suspense fallback={<div className="p-8 text-center text-[var(--text-muted)]">Loading trophies...</div>}>
+                        <AchievementsList />
+                    </React.Suspense>
+                </div>
+            )}
         </div>
     );
 }
+
+// Lazy load
+const AchievementsList = React.lazy(() => import('../components/AchievementsList'));
