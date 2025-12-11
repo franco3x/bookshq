@@ -86,10 +86,31 @@ export default function AuthorDetail() {
                                 <Book size={14} />
                                 {author.books?.length} Books
                             </span>
-                            <span className="flex items-center gap-2 bg-[var(--bg-secondary)] px-3 py-1 rounded-full border border-[var(--glass-border)] text-[var(--accent-gold)] font-bold">
-                                <Trophy size={14} />
-                                Lvl {level || 1}
-                            </span>
+                            <div className="group relative cursor-help">
+                                <span className="flex items-center gap-2 bg-[var(--bg-secondary)] px-3 py-1 rounded-full border border-[var(--glass-border)] text-[var(--accent-gold)] font-bold">
+                                    <Trophy size={14} />
+                                    Lvl {level || 1}
+                                </span>
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-gray-900/95 backdrop-blur-md border border-white/10 p-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-xs text-left">
+                                    <div className="font-bold text-[var(--accent-gold)] mb-1 text-center">Level {level || 1} Details</div>
+                                    <div className="space-y-1 text-gray-300">
+                                        <div className="flex justify-between">
+                                            <span>Total XP:</span>
+                                            <span className="font-mono text-white">{totalXP.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Highlights:</span>
+                                            <span className="font-mono text-white">{totalHighlights}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Books Read:</span>
+                                            <span className="font-mono text-white">{author.books?.length || 0}</span>
+                                        </div>
+                                    </div>
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900/95"></div>
+                                </div>
+                            </div>
                         </div>
 
                         {/* Demographics Badges */}
