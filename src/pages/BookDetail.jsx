@@ -2,9 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '../utils/api';
-import HighlightCard from '../components/HighlightCard';
 import { ArrowLeft, Book as BookIcon, Trophy, Highlighter, Clock, CheckCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 export default function BookDetail() {
     const { id } = useParams();
@@ -26,8 +24,20 @@ export default function BookDetail() {
         }
     };
 
-    if (loading) return <div>Loading...</div>;
-    if (!book) return <div>Book not found</div>;
+    const [isEditingTags, setIsEditingTags] = useState(false);
+    const [tagInput, setTagInput] = useState('');
+
+    const handleSaveTags = async () => {
+        try {
+            const newTags = tagInput.split(',').map(t => t.trim()).filter(Boolean);
+            await api.bulkUpdateTags([book.id], newTags);
+            setBook(prev => ({ ...prev, tags: newTags }));
+            setIsEditingTags(false);
+        } catch (error) {
+            console.error('Failed to update tags:', error);
+            alert('Failed to update tags');
+        }
+    };
 
     const handleMarkAsRead = async () => {
         try {
@@ -35,15 +45,16 @@ export default function BookDetail() {
             if (res.ok) {
                 const data = await res.json();
                 setBook(prev => ({ ...prev, readCount: data.readCount, dateLastRead: new Date() }));
-                // Trigger confetti or toast ideally, but simple state update for now
             }
         } catch (error) {
             console.error('Failed to mark as read', error);
         }
     };
 
-    // Define gradient and totalHighlights for the new UI elements
-    const gradient = "from-blue-500 to-purple-600"; // Placeholder, adjust as needed
+    if (loading) return <div>Loading...</div>;
+    if (!book) return <div>Book not found</div>;
+
+    const gradient = "from-blue-500 to-purple-600";
     const totalHighlights = book.highlights?.length || 0;
 
     return (
@@ -71,17 +82,56 @@ export default function BookDetail() {
                         </Link>
 
                         <div className="flex flex-wrap gap-4 pt-4">
-                            {/* Tags Display */}
-                            {book.tags && Array.isArray(book.tags) && book.tags.length > 0 && (
-                                <div className="w-full flex flex-wrap gap-2 mb-2">
-                                    {book.tags.map((tag, i) => (
-                                        <span key={i} className="px-3 py-1 text-xs font-medium bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-full flex items-center gap-1.5 text-[var(--text-secondary)]">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)]" />
-                                            {tag}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
+                            {/* Tags Display/Edit */}
+                            <div className="w-full mb-2">
+                                {!isEditingTags ? (
+                                    <div className="flex flex-wrap gap-2 items-center">
+                                        {book.tags && Array.isArray(book.tags) && book.tags.map((tag, i) => (
+                                            <span key={i} className="px-3 py-1 text-xs font-medium bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-full flex items-center gap-1.5 text-[var(--text-secondary)]">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)]" />
+                                                {tag}
+                                            </span>
+                                        ))}
+                                        <button
+                                            onClick={() => {
+                                                setTagInput(book.tags?.join(', ') || '');
+                                                setIsEditingTags(true);
+                                            }}
+                                            className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors ml-1"
+                                            title="Edit tags"
+                                        >
+                                            <Highlighter size={14} />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="text"
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            placeholder="Enter tags (comma-separated)"
+                                            className="flex-1 bg-[var(--bg-secondary)] border border-[var(--glass-border)] rounded-lg px-3 py-1.5 text-sm outline-none focus:border-[var(--accent-primary)]"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleSaveTags();
+                                                if (e.key === 'Escape') setIsEditingTags(false);
+                                            }}
+                                        />
+                                        <button
+                                            onClick={handleSaveTags}
+                                            className="px-3 py-1.5 bg-[var(--accent-primary)] text-white text-xs font-bold rounded-lg hover:bg-[var(--accent-secondary)]"
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            onClick={() => setIsEditingTags(false)}
+                                            className="px-3 py-1.5 bg-[var(--bg-tertiary)] text-[var(--text-secondary)] text-xs font-medium rounded-lg hover:bg-[var(--glass-border)]"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
 
                             <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2">
                                 <Highlighter size={16} className="text-[var(--accent-primary)]" />
