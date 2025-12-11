@@ -9,6 +9,7 @@ export default function Books() {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('');
     const [viewMode, setViewMode] = useState('grid');
+    const [sortBy, setSortBy] = useState('dateLastRead'); // 'title', 'author', 'highlightCount', 'dateLastRead'
 
     useEffect(() => {
         loadBooks();
@@ -28,7 +29,26 @@ export default function Books() {
     const filteredBooks = books.filter(b =>
         b.title.toLowerCase().includes(filter.toLowerCase()) ||
         b.author?.name.toLowerCase().includes(filter.toLowerCase())
-    );
+    ).sort((a, b) => {
+        switch (sortBy) {
+            case 'title':
+                return a.title.localeCompare(b.title);
+            case 'author':
+                return (a.author?.name || '').localeCompare(b.author?.name || '');
+            case 'highlightCount':
+                return (b.highlightCount || 0) - (a.highlightCount || 0);
+            case 'dateLastRead':
+                return new Date(b.dateLastRead || 0) - new Date(a.dateLastRead || 0);
+            default:
+                return 0;
+        }
+    });
+
+    // Reverse logic for dates/counts to be descending by default, but title/author ascending
+    // Actually standard sort logic is better directly in switch above.
+    // 'dateLastRead': b - a (descending, newest first)
+    // 'highlightCount': b - a (descending, most first)
+    // 'title': a - b (ascending, A-Z)
 
     return (
         <div className="space-y-6">
@@ -40,19 +60,39 @@ export default function Books() {
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--glass-border)]">
-                    <button
-                        onClick={() => setViewMode('grid')}
-                        className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-[var(--bg-tertiary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
-                    >
-                        <LayoutGrid size={20} />
-                    </button>
-                    <button
-                        onClick={() => setViewMode('list')}
-                        className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-[var(--bg-tertiary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
-                    >
-                        <ListIcon size={20} />
-                    </button>
+                <div className="flex items-center gap-3">
+                    {/* Sort Dropdown */}
+                    <div className="relative group">
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="appearance-none bg-[var(--bg-secondary)] border border-[var(--glass-border)] text-[var(--text-secondary)] py-2 pl-3 pr-8 rounded-lg outline-none focus:border-[var(--accent-primary)] cursor-pointer hover:bg-[var(--glass-highlight)] transition-colors"
+                        >
+                            <option value="dateLastRead">Last Read</option>
+                            <option value="highlightCount">Most Highlights</option>
+                            <option value="title">Title (A-Z)</option>
+                            <option value="author">Author (A-Z)</option>
+                        </select>
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--text-muted)]">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+
+                    {/* View Toggle */}
+                    <div className="flex items-center gap-1 bg-[var(--bg-secondary)] p-1 rounded-lg border border-[var(--glass-border)]">
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-[var(--bg-tertiary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                        >
+                            <LayoutGrid size={20} />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-[var(--bg-tertiary)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                        >
+                            <ListIcon size={20} />
+                        </button>
+                    </div>
                 </div>
             </div>
 

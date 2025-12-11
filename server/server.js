@@ -16,6 +16,7 @@ import multer from 'multer';
 const upload = multer({ storage: multer.memoryStorage() });
 
 import { parseMyClippings } from './services/parser.js';
+import { parseReadwiseCSV } from './services/readwise-parser.js';
 import { saveHighlights } from './services/db-service.js';
 
 app.use(cors());
@@ -30,15 +31,27 @@ app.post('/api/import', upload.single('file'), async (req, res) => {
         const fileContent = req.file.buffer.toString('utf-8');
         const clippings = parseMyClippings(fileContent);
         const result = await saveHighlights(clippings);
-
-        res.json({
-            success: true,
-            message: `Imported ${result.createdCount} highlights. Skipped ${result.skippedCount} duplicates.`,
-            stats: result
-        });
+        res.json(result);
     } catch (error) {
-        console.error('Import failed:', error);
-        res.status(500).json({ error: 'Failed to process file' });
+        console.error('Import error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Import Readwise CSV
+app.post('/api/import/readwise', upload.single('file'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    try {
+        const fileContent = req.file.buffer.toString('utf-8');
+        const clippings = parseReadwiseCSV(fileContent);
+        const result = await saveHighlights(clippings);
+        res.json(result);
+    } catch (error) {
+        console.error('Readwise import error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -109,7 +122,69 @@ app.post('/api/books/:id/read', async (req, res) => {
             })
             .where(eq(books.id, bookId));
 
-        res.json({ success: true, readCount: newCount });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: Backfill covers
+app.get('/api/admin/backfill-covers', async (req, res) => {
+    try {
+        const { fetchBookCover } = await import('./services/cover-fetcher.js');
+        const booksWithoutCovers = await db.query.books.findMany({
+            where: (books, { isNull }) => isNull(books.coverImage),
+            with: { author: true }
+        });
+
+        console.log(`Found ${booksWithoutCovers.length} books without covers. Starting backfill...`);
+
+        // Process in chunks to avoid rate limits
+        let updatedCount = 0;
+        for (const book of booksWithoutCovers) {
+            if (!book.author) continue;
+
+            const coverUrl = await fetchBookCover(book.title, book.author.name);
+            if (coverUrl) {
+                await db.update(books)
+                    .set({ coverImage: coverUrl })
+                    .where(eq(books.id, book.id));
+                updatedCount++;
+                console.log(`Updated cover for "${book.title}"`);
+            }
+            // Small delay to be nice to API
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        res.json({ success: true, total: booksWithoutCovers.length, updated: updatedCount });
+    } catch (e) {
+        console.error('Backfill error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Fetch cover for specific book
+app.post('/api/books/:id/cover/fetch', async (req, res) => {
+    try {
+        const bookId = parseInt(req.params.id);
+        const book = await db.query.books.findFirst({
+            where: eq(books.id, bookId),
+            with: { author: true }
+        });
+
+        if (!book) return res.status(404).json({ error: 'Book not found' });
+        if (!book.author) return res.status(400).json({ error: 'Book has no author' });
+
+        const { fetchBookCover } = await import('./services/cover-fetcher.js');
+        const coverUrl = await fetchBookCover(book.title, book.author.name);
+
+        if (coverUrl) {
+            await db.update(books)
+                .set({ coverImage: coverUrl })
+                .where(eq(books.id, bookId));
+            res.json({ success: true, coverImage: coverUrl });
+        } else {
+            res.status(404).json({ error: 'No cover found' });
+        }
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

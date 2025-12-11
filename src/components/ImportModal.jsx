@@ -8,6 +8,7 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
     const [status, setStatus] = useState('idle'); // idle, uploading, processing, success, error
     const [result, setResult] = useState(null);
     const [errorMsg, setErrorMsg] = useState('');
+    const [importType, setImportType] = useState('kindle'); // 'kindle' or 'readwise'
 
     // Progress simulation
     const [progress, setProgress] = useState(0);
@@ -54,7 +55,22 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
         }, 500);
 
         try {
-            const data = await api.importClippings(file);
+            let data;
+            if (importType === 'readwise') {
+                // Call Readwise endpoint
+                const formData = new FormData();
+                formData.append('file', file);
+                const response = await fetch('/api/import/readwise', {
+                    method: 'POST',
+                    body: formData,
+                });
+                if (!response.ok) throw new Error('Import failed');
+                data = await response.json();
+            } else {
+                // Use existing Kindle import
+                data = await api.importClippings(file);
+            }
+
             clearInterval(interval);
             setProgress(100);
             setStatus('success');
@@ -74,17 +90,46 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
         setProgress(0);
     };
 
+    const fileExtension = importType === 'readwise' ? '.csv' : '.txt';
+    const fileName = importType === 'readwise' ? 'readwise-data.csv' : 'My Clippings.txt';
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div className="bg-[var(--bg-secondary)] border border-[var(--glass-border)] w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
 
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-[var(--glass-border)]">
-                    <h2 className="text-xl font-bold">Import Kindle Highlights</h2>
+                    <h2 className="text-xl font-bold">Import Highlights</h2>
                     <button onClick={onClose} className="p-2 hover:bg-[var(--bg-tertiary)] rounded-lg transition-colors">
                         <X size={20} />
                     </button>
                 </div>
+
+                {/* Import Type Toggle */}
+                {status === 'idle' && (
+                    <div className="px-6 pt-4 pb-0">
+                        <div className="flex gap-2 bg-[var(--bg-tertiary)] p-1 rounded-lg">
+                            <button
+                                onClick={() => setImportType('kindle')}
+                                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${importType === 'kindle'
+                                        ? 'bg-[var(--accent-primary)] text-black shadow-sm'
+                                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                    }`}
+                            >
+                                Kindle (.txt)
+                            </button>
+                            <button
+                                onClick={() => setImportType('readwise')}
+                                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${importType === 'readwise'
+                                        ? 'bg-[var(--accent-primary)] text-black shadow-sm'
+                                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                    }`}
+                            >
+                                Readwise (.csv)
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Content */}
                 <div className="p-8">
@@ -97,12 +142,12 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
                                 className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors cursor-pointer ${dragActive ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)]/10' : 'border-[var(--glass-border)] hover:border-[var(--text-secondary)]'}`}
                                 onClick={() => fileInputRef.current?.click()}
                             >
-                                <input ref={fileInputRef} type="file" className="hidden" accept=".txt" onChange={handleChange} />
+                                <input ref={fileInputRef} type="file" className="hidden" accept={fileExtension} onChange={handleChange} />
                                 <div className="w-16 h-16 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center mx-auto mb-4">
                                     <FileText size={32} className="text-[var(--text-secondary)]" />
                                 </div>
-                                <p className="font-medium text-lg mb-2">Drag "My Clippings.txt" here</p>
-                                <p className="text-[var(--text-muted)] text-sm">or click to browse checks</p>
+                                <p className="font-medium text-lg mb-2">Drag "{fileName}" here</p>
+                                <p className="text-[var(--text-muted)] text-sm">or click to browse</p>
                             </motion.div>
                         )}
 
