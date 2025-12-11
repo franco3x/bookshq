@@ -77,7 +77,7 @@ export default function AuthorDetail() {
 
                 <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
                     <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg">
-                        {author.name.substring(0, 2)}
+                        {author.name.split(' ').map((n, i, arr) => i === 0 || i === arr.length - 1 ? n[0] : '').join('')}
                     </div>
                     <div className="text-center md:text-left flex-1">
                         <h1 className="text-3xl font-bold mb-2">{author.name}</h1>
