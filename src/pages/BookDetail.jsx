@@ -138,6 +138,13 @@ export default function BookDetail() {
                                 <span>{totalHighlights} highlights</span>
                             </div>
 
+                            {book.genre && (
+                                <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2 text-[var(--accent-secondary)]">
+                                    <BookIcon size={16} />
+                                    <span>{book.genre}</span>
+                                </div>
+                            )}
+
                             {book.dateLastRead && (
                                 <div className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2">
                                     <Clock size={16} className="text-[var(--accent-secondary)]" />

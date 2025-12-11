@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, Book as BookIcon } from 'lucide-react';
 
 export default function Settings() {
     const [exporting, setExporting] = useState(false);
@@ -37,6 +37,44 @@ export default function Settings() {
                 >
                     <Download size={20} />
                     {exporting ? 'Generating ZIP...' : 'Export to Obsidian'}
+                </button>
+            </div>
+
+            {/* Metadata Management */}
+            <div className="glass-panel p-8 rounded-2xl">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <BookIcon className="text-[var(--accent-secondary)]" />
+                    Library Metadata
+                </h2>
+                <p className="text-[var(--text-secondary)] mb-6">
+                    Automatically fetch missing book covers and genres from Google Books. This process runs in the background.
+                </p>
+
+                <button
+                    onClick={async () => {
+                        const btn = document.getElementById('meta-btn');
+                        if (btn) {
+                            btn.innerText = 'Fetching...';
+                            btn.disabled = true;
+                        }
+                        try {
+                            const res = await fetch('/api/admin/backfill-covers');
+                            const data = await res.json();
+                            alert(`Metadata fetch started! Check server logs for progress.`);
+                        } catch (e) {
+                            alert('Error starting fetch');
+                        } finally {
+                            if (btn) {
+                                btn.innerText = 'Fetch Covers & Genres';
+                                btn.disabled = false;
+                            }
+                        }
+                    }}
+                    id="meta-btn"
+                    className="px-6 py-3 bg-[var(--bg-tertiary)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] rounded-xl font-medium flex items-center gap-3 transition-colors border border-[var(--glass-border)]"
+                >
+                    <Download size={20} className="rotate-180" /> {/* Upload/Cloud icon substitute */}
+                    Fetch Covers & Genres
                 </button>
             </div>
 
