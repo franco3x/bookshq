@@ -41,9 +41,9 @@ export default function AuthorDetail() {
     if (!author) return <div>Author not found</div>;
 
     const totalHighlights = author.highlights?.length || 0;
-    const totalXP = totalHighlights * 10;
-    // Level = sqrt(XP / 100)
-    const level = Math.floor(Math.sqrt(totalXP / 100));
+    // Use the pre-calculated XP and level from the backend
+    const totalXP = author.authorLevel?.xp || 0;
+    const level = author.authorLevel?.level || 1;
 
     const handleAutoFetch = async () => {
         setUpdating(true);

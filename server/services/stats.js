@@ -4,8 +4,8 @@ import { eq, sql } from 'drizzle-orm';
 
 // XP Constants
 const XP_PER_HIGHLIGHT = 10;
-const XP_PER_BOOK_READ = 100;
-const XP_PER_BOOK_REREAD = 50;
+const XP_PER_BOOK_READ = 250;
+const XP_PER_BOOK_REREAD = 150;
 const XP_PER_BOOK_IMPORT = 10;
 
 export async function recalculateStats() {

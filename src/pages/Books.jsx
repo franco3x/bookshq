@@ -89,12 +89,29 @@ export default function Books() {
                 }
             }
 
-            // Demographics filters
-            const matchesNationality = !nationalityFilter || book.author?.nationality === nationalityFilter;
-            const matchesRace = !raceFilter || book.author?.race === raceFilter;
-            const matchesGender = !genderFilter || book.author?.gender === genderFilter;
+            // Demographics filters (handle both arrays and strings, case-insensitive)
+            const matchesNationality = !nationalityFilter || (
+                Array.isArray(book.author?.nationality)
+                    ? book.author.nationality.some(n => n.toLowerCase() === nationalityFilter.toLowerCase())
+                    : book.author?.nationality?.toLowerCase() === nationalityFilter.toLowerCase()
+            );
 
-            return matchesSearch && matchesTag && matchesGenre && matchesNationality && matchesRace && matchesGender;
+            const matchesRace = !raceFilter || (
+                Array.isArray(book.author?.race)
+                    ? book.author.race.some(r => r.toLowerCase() === raceFilter.toLowerCase())
+                    : book.author?.race?.toLowerCase() === raceFilter.toLowerCase()
+            );
+
+            const matchesGender = !genderFilter || book.author?.gender?.toLowerCase() === genderFilter.toLowerCase();
+
+            const vocationFilter = searchParams.get('vocation');
+            const matchesVocation = !vocationFilter || (
+                Array.isArray(book.author?.vocation)
+                    ? book.author.vocation.some(v => v.toLowerCase() === vocationFilter.toLowerCase())
+                    : book.author?.vocation?.toLowerCase() === vocationFilter.toLowerCase()
+            );
+
+            return matchesSearch && matchesTag && matchesGenre && matchesNationality && matchesRace && matchesGender && matchesVocation;
         })
         .sort((a, b) => {
             switch (sortBy) {

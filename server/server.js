@@ -355,8 +355,10 @@ app.get('/api/authors', async (req, res) => {
 
 app.get('/api/authors/:id', async (req, res) => {
     try {
+        const authorId = parseInt(req.params.id);
+
         const author = await db.query.authors.findFirst({
-            where: eq(authors.id, parseInt(req.params.id)),
+            where: eq(authors.id, authorId),
             with: {
                 books: {
                     with: {
@@ -366,8 +368,19 @@ app.get('/api/authors/:id', async (req, res) => {
                 highlights: true
             }
         });
+
         if (!author) return res.status(404).json({ error: 'Author not found' });
-        res.json(author);
+
+        // Fetch the author level separately
+        const authorLevel = await db.query.authorLevels.findFirst({
+            where: eq(authorLevels.authorId, authorId)
+        });
+
+        // Add the level data to the response
+        res.json({
+            ...author,
+            authorLevel: authorLevel || { xp: 0, level: 1 }
+        });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
