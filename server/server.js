@@ -580,6 +580,21 @@ app.patch('/api/authors/:id', async (req, res) => {
         if (deathYear !== undefined) updateData.deathYear = deathYear; // Integer
         if (bio !== undefined) updateData.bio = bio; // Text
 
+        // Helper: Title Case Normalization
+        const normalize = (val) => {
+            if (!val) return val;
+            if (Array.isArray(val)) {
+                return [...new Set(val.map(v => v.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase())))];
+            }
+            return val.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+        };
+
+        // Apply Normalization
+        if (updateData.gender) updateData.gender = normalize(updateData.gender);
+        if (updateData.race) updateData.race = normalize(updateData.race);
+        if (updateData.nationality) updateData.nationality = normalize(updateData.nationality);
+        if (updateData.vocation) updateData.vocation = normalize(updateData.vocation);
+
         if (Object.keys(updateData).length === 0) {
             return res.status(400).json({ error: 'No fields to update' });
         }
