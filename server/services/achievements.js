@@ -132,12 +132,24 @@ export async function checkAchievements(userId = 1, triggers = ['ALL']) {
                                     (categoryType === 'Nationality' ? 'Globe' :
                                         (categoryType === 'Author' ? 'User' : 'Briefcase'));
 
+                                // Calculate XP based on category and tier
+                                let xpReward;
+                                if (categoryType === 'Author') {
+                                    // Author-specific nerfs: Tier 2-4: 70% reduction, Tier 5: 80% reduction
+                                    const authorXP = [250, 300, 1500, 5000, 8000]; // T1-T5
+                                    xpReward = authorXP[tier.level - 1];
+                                } else {
+                                    // All other categories: Standard scaling, Tier 5: 80% reduction
+                                    const standardXP = [250, 1000, 5000, 25000, 20000]; // T1-T5 (T5 nerfed from 100k)
+                                    xpReward = standardXP[tier.level - 1];
+                                }
+
                                 [achievement] = await tx.insert(achievements).values({
                                     code,
                                     title,
                                     description,
                                     icon,
-                                    xpReward: tier.level === 1 ? 250 : (tier.level === 2 ? 1000 : (tier.level === 3 ? 5000 : (tier.level === 4 ? 25000 : 100000))),
+                                    xpReward,
                                     category: categoryType, // Grouping
                                     conditionType: 'SPECIFIC',
                                     conditionValue: tier.count

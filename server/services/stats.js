@@ -120,8 +120,7 @@ export async function recalculateStats() {
                     }
                 }
             } else if (book.authorId && book.author) {
-                // Legacy fallback
-                // Legacy fallback
+                // Legacy fallback (only for books WITHOUT bookAuthors entries)
                 const current = authorXPMap.get(book.authorId) || 0;
                 authorXPMap.set(book.authorId, current + bookXP);
                 if (book.author && book.author.name) authorNameMap.set(book.author.name.toLowerCase(), book.authorId);
@@ -150,7 +149,7 @@ export async function recalculateStats() {
             }
         }
 
-        // --- Achievement XP ---
+        // --- Achievement XP (Global Only) ---
         const unlockedAchievements = await db.query.userAchievements.findMany({
             with: {
                 achievement: true
@@ -160,60 +159,10 @@ export async function recalculateStats() {
         let achievementXP = 0;
         for (const ua of unlockedAchievements) {
             if (ua.achievement) {
-                const xp = ua.achievement.xpReward;
-                achievementXP += xp;
-
-                // --- Feed XP back into Entity Levels ---
-                // Helper: Extract "Target" from Title "Title of Target"
-                // This relies on the naming convention "${tier.name} of ${key}" used in achievements.js
-                // Regex: Anything after " of "
-                const extractTarget = (title) => {
-                    const match = title.match(/ of (.+)$/i);
-                    return match ? match[1] : null;
-                };
-
-                if (ua.achievement.category === 'Author') {
-                    const targetName = extractTarget(ua.achievement.title);
-                    if (targetName) {
-                        const authorId = authorNameMap.get(targetName.toLowerCase());
-                        if (authorId) {
-                            const current = authorXPMap.get(authorId) || 0;
-                            authorXPMap.set(authorId, current + xp);
-                        }
-                    }
-                } else if (ua.achievement.category === 'Genre') {
-                    const target = extractTarget(ua.achievement.title);
-                    if (target) {
-                        const key = `genre:${target}`;
-                        categoryXPMap.set(key, (categoryXPMap.get(key) || 0) + xp);
-                    }
-                } else if (ua.achievement.category === 'Global') { // Nationality
-                    const target = extractTarget(ua.achievement.title);
-                    if (target) {
-                        const key = `nationality:${target}`; // Note: Check normalization if needed, but usually matches
-                        categoryXPMap.set(key, (categoryXPMap.get(key) || 0) + xp);
-                    }
-                } else if (ua.achievement.category === 'Vocation') {
-                    // Vocations title pattern: "Master Writer", "Apprentice Investor" -> No " of "
-                    // Logic in achievements.js: `${vocTitle} ${key}`
-                    // We need to parse the last word usually, or strip the known prefix.
-                    // Prefixes: Curious, Apprentice, Journeyman, Master, Grandmaster.
-                    const title = ua.achievement.title;
-                    const prefixes = ['Curious', 'Apprentice', 'Journeyman', 'Master', 'Grandmaster'];
-                    const foundPrefix = prefixes.find(p => title.startsWith(p));
-                    if (foundPrefix) {
-                        const target = title.substring(foundPrefix.length).trim();
-                        // The target in "Master Investor" is "Investor".
-                        // However, categoryXPMap uses "vocation:Investor".
-                        if (target) {
-                            const key = `vocation:${target}`;
-                            categoryXPMap.set(key, (categoryXPMap.get(key) || 0) + xp);
-                        }
-                    }
-                }
+                achievementXP += ua.achievement.xpReward;
             }
         }
-        console.log(`🏆 Adding ${achievementXP} XP from ${unlockedAchievements.length} achievements...`);
+        console.log(`🏆 Adding ${achievementXP} XP from ${unlockedAchievements.length} achievements to GLOBAL XP only...`);
         totalGlobalXP += achievementXP;
 
         // Batched Updates (Transactional for safety and cleanup)
