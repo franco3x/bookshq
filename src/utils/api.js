@@ -83,6 +83,20 @@ export const api = {
         return response.json();
     },
 
+    // Bulk mark as read
+    bulkMarkAsRead: async (bookIds) => {
+        const response = await fetch(`${API_BASE}/books/bulk/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookIds })
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to mark books as read');
+        }
+        return response.json();
+    },
+
     // Bulk update tags for books
     bulkUpdateTags: async (bookIds, tags) => {
         const response = await fetch(`${API_BASE}/books/bulk/tags`, {

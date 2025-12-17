@@ -194,7 +194,7 @@ export async function recalculateStats() {
                         categoryType: type,
                         categoryValue: valParts.join(':'),
                         xp,
-                        level: Math.max(1, Math.floor(Math.sqrt(xp / 100)))
+                        level: Math.max(1, Math.floor(Math.sqrt((Number(xp) || 0) / 100)))
                     };
                 });
 

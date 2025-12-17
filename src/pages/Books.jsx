@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../utils/api';
 import BookCard from '../components/BookCard';
-import { Search, LayoutGrid, List as ListIcon, X, BookOpen, User, Highlighter, Calendar } from 'lucide-react';
+import { Search, LayoutGrid, List as ListIcon, X, BookOpen, User, Highlighter, Calendar, Edit2, CheckSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Books() {
@@ -15,6 +15,8 @@ export default function Books() {
     const [searchParams, setSearchParams] = useSearchParams();
     const [bulkTagInput, setBulkTagInput] = useState('');
     const [isTagging, setIsTagging] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [isMarkingRead, setIsMarkingRead] = useState(false);
 
     useEffect(() => {
         loadBooks();
@@ -49,6 +51,27 @@ export default function Books() {
             alert('Failed to update tags');
         } finally {
             setIsTagging(false);
+        }
+    };
+
+    const handleBulkMarkRead = async () => {
+        if (selectedBooks.size === 0) return;
+
+        if (!confirm(`Mark ${selectedBooks.size} books as read?`)) return;
+
+        setIsMarkingRead(true);
+        try {
+            await api.bulkMarkAsRead(Array.from(selectedBooks));
+
+            // Reload books and clear selection
+            await loadBooks();
+            setSelectedBooks(new Set());
+            setIsEditMode(false); // Optional: exit edit mode after action
+        } catch (e) {
+            console.error(e);
+            alert(`Failed to mark books as read: ${e.message}`);
+        } finally {
+            setIsMarkingRead(false);
         }
     };
 
@@ -183,6 +206,21 @@ export default function Books() {
                             <ListIcon size={20} />
                         </button>
                     </div>
+
+                    {/* Edit Mode Toggle */}
+                    <button
+                        onClick={() => {
+                            setIsEditMode(!isEditMode);
+                            if (isEditMode) setSelectedBooks(new Set()); // Clear selection on exit
+                        }}
+                        className={`p-2 rounded-lg border transition-all flex items-center gap-2 ${isEditMode
+                            ? 'bg-[var(--accent-primary)] text-white border-[var(--accent-primary)]'
+                            : 'bg-[var(--bg-secondary)] border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                            }`}
+                    >
+                        {isEditMode ? <CheckSquare size={20} /> : <Edit2 size={20} />}
+                        <span className="text-sm font-medium hidden md:inline">{isEditMode ? 'Done' : 'Select'}</span>
+                    </button>
                 </div>
             </div>
 
@@ -300,87 +338,115 @@ export default function Books() {
                     >
                         Clear
                     </button>
-                </div>
-            )}
 
-            {loading ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 animate-pulse">
-                    {[...Array(10)].map((_, i) => (
-                        <div key={i} className="h-72 bg-[var(--bg-tertiary)] rounded-xl" />
-                    ))}
-                </div>
-            ) : filteredBooks.length > 0 ? (
-                <>
-                    {viewMode === 'grid' && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
-                            {filteredBooks.map(book => (
-                                <div key={book.id} className="relative">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedBooks.has(book.id)}
-                                        onChange={() => toggleBookSelection(book.id)}
-                                        className="absolute top-2 left-2 z-10 w-5 h-5 cursor-pointer"
-                                    />
-                                    <BookCard book={book} />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    {viewMode === 'list' && (
-                        <div className="glass-panel rounded-xl overflow-hidden">
-                            <table className="w-full text-left">
-                                <thead className="bg-[var(--bg-secondary)] text-[var(--text-secondary)] text-sm uppercase tracking-wider font-medium">
-                                    <tr>
-                                        <th className="p-4">Title</th>
-                                        <th className="p-4">Author</th>
-                                        <th className="p-4 text-center">Highlights</th>
-                                        <th className="p-4 text-right">Last Read</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[var(--glass-border)]">
-                                    {filteredBooks.map(book => (
-                                        <tr key={book.id} className="group hover:bg-[var(--glass-highlight)] transition-colors">
-                                            <td className="p-4">
-                                                <Link to={`/books/${book.id}`} className="font-bold text-[var(--text-primary)] hover:text-[var(--accent-primary)] transition-colors flex items-center gap-2">
-                                                    <BookOpen size={14} className="text-[var(--text-muted)]" />
-                                                    {book.title}
-                                                </Link>
-                                            </td>
-                                            <td className="p-4">
-                                                {book.author && (
-                                                    <Link to={`/authors/${book.author.id}`} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-2">
-                                                        <User size={14} className="text-[var(--text-muted)]" />
-                                                        {book.author.name}
-                                                    </Link>
-                                                )}
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--glass-border)]">
-                                                    <Highlighter size={12} />
-                                                    {book.highlightCount || 0}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 text-right text-[var(--text-muted)] text-sm">
-                                                {book.dateLastRead ? (
-                                                    <span className="flex items-center justify-end gap-1">
-                                                        <Calendar size={12} />
-                                                        {new Date(book.dateLastRead).toLocaleDateString()}
-                                                    </span>
-                                                ) : '-'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </>
-            ) : (
-                <div className="text-center py-20 opacity-50">
-                    <BookOpen size={48} className="mx-auto mb-4" />
-                    <p className="text-xl">No books found</p>
+                    <div className="w-px h-6 bg-[var(--accent-primary)]/30 mx-2" />
+
+                    <button
+                        onClick={handleBulkMarkRead}
+                        disabled={isMarkingRead}
+                        className="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--glass-border)] rounded-lg text-sm font-medium hover:bg-[var(--glass-highlight)] transition-colors flex items-center gap-2"
+                    >
+                        <BookOpen size={16} />
+                        {isMarkingRead ? 'Marking...' : 'Mark as Read'}
+                    </button>
                 </div>
             )}
-        </div>
+            {/* Loading / Empty / Content States */}
+            {
+                loading ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6 animate-pulse">
+                        {[...Array(10)].map((_, i) => (
+                            <div key={i} className="h-72 bg-[var(--bg-tertiary)] rounded-xl" />
+                        ))}
+                    </div>
+                ) : filteredBooks.length > 0 ? (
+                    <>
+                        {viewMode === 'grid' && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+                                {filteredBooks.map(book => (
+                                    <div key={book.id} className="relative">
+                                        {isEditMode && (
+                                            <div className="absolute top-2 left-2 z-10 p-1 bg-[var(--bg-primary)]/80 backdrop-blur-sm rounded-md shadow-sm">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedBooks.has(book.id)}
+                                                    onChange={() => toggleBookSelection(book.id)}
+                                                    className="w-5 h-5 cursor-pointer accent-[var(--accent-primary)]"
+                                                />
+                                            </div>
+                                        )}
+                                        <BookCard book={book} />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {viewMode === 'list' && (
+                            <div className="glass-panel rounded-xl overflow-hidden">
+                                <table className="w-full text-left">
+                                    <thead className="bg-[var(--bg-secondary)] text-[var(--text-secondary)] text-sm uppercase tracking-wider font-medium">
+                                        <tr>
+                                            {isEditMode && <th className="p-4 w-12"></th>}
+                                            <th className="p-4">Title</th>
+                                            <th className="p-4">Author</th>
+                                            <th className="p-4 text-center">Highlights</th>
+                                            <th className="p-4 text-right">Last Read</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-[var(--glass-border)]">
+                                        {filteredBooks.map(book => (
+                                            <tr key={book.id} className="group hover:bg-[var(--glass-highlight)] transition-colors">
+                                                {isEditMode && (
+                                                    <td className="p-4">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedBooks.has(book.id)}
+                                                            onChange={() => toggleBookSelection(book.id)}
+                                                            className="w-5 h-5 cursor-pointer accent-[var(--accent-primary)]"
+                                                        />
+                                                    </td>
+                                                )}
+                                                <td className="p-4">
+                                                    <Link to={`/books/${book.id}`} className="font-bold text-[var(--text-primary)] hover:text-[var(--accent-primary)] transition-colors flex items-center gap-2">
+                                                        <BookOpen size={14} className="text-[var(--text-muted)]" />
+                                                        {book.title}
+                                                    </Link>
+                                                </td>
+                                                <td className="p-4">
+                                                    {book.author && (
+                                                        <Link to={`/authors/${book.author.id}`} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-2">
+                                                            <User size={14} className="text-[var(--text-muted)]" />
+                                                            {book.author.name}
+                                                        </Link>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--glass-border)]">
+                                                        <Highlighter size={12} />
+                                                        {book.highlightCount || 0}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-right text-[var(--text-muted)] text-sm">
+                                                    {book.dateLastRead ? (
+                                                        <span className="flex items-center justify-end gap-1">
+                                                            <Calendar size={12} />
+                                                            {new Date(book.dateLastRead).toLocaleDateString()}
+                                                        </span>
+                                                    ) : '-'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </>
+                ) : (
+                    <div className="text-center py-20 opacity-50">
+                        <BookOpen size={48} className="mx-auto mb-4" />
+                        <p className="text-xl">No books found</p>
+                    </div>
+                )
+            }
+        </div >
     );
 }

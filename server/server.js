@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { db } from './database/db.js';
 import { books, authors, highlights, userStats, categoryLevels, authorLevels, bookAuthors, achievements, userAchievements } from './database/schema.js';
-import { eq, desc, sql, gt, and, ne } from 'drizzle-orm';
+import { eq, desc, sql, gt, and, ne, inArray } from 'drizzle-orm';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -118,8 +118,13 @@ app.get('/api/books/:id', async (req, res) => {
     }
 });
 
-app.post('/api/books/:id/read', async (req, res) => {
+app.post('/api/books/:id/read', async (req, res, next) => {
     const bookId = parseInt(req.params.id);
+
+    // If id is not a valid integer, skip this route and let Express try other routes
+    if (isNaN(bookId)) {
+        return next();
+    }
 
     try {
         const book = await db.query.books.findFirst({
@@ -264,6 +269,70 @@ app.get('/api/achievements', async (req, res) => {
 });
 
 // Bulk update tags for multiple books
+// Bulk mark as read
+app.post('/api/books/bulk/read', async (req, res) => {
+    const { bookIds } = req.body;
+    if (!bookIds || !Array.isArray(bookIds)) {
+        return res.status(400).json({ error: 'Invalid bookIds' });
+    }
+
+    // Sanitize bookIds to ensure we don't pass NaN to the DB
+    const safeBookIds = bookIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    if (safeBookIds.length === 0) {
+        return res.status(400).json({ error: 'No valid book IDs provided' });
+    }
+
+    try {
+        const now = new Date();
+
+        // 1. Get current books to check if they are already read (for first-read logic)
+        const targets = [];
+        for (const id of safeBookIds) {
+            const [b] = await db.select().from(books).where(eq(books.id, id));
+            if (b) targets.push(b);
+        }
+
+        // 2. Update all to increment readCount
+        let totalXP = 0;
+
+        await db.transaction(async (tx) => {
+            for (const book of targets) {
+                const isFirstRead = (book.readCount || 0) === 0;
+
+                await tx.update(books)
+                    .set({
+                        readCount: sql`COALESCE(read_count, 0) + 1`,
+                        dateLastRead: now,
+                        dateFirstRead: isFirstRead ? now : book.dateFirstRead
+                    })
+                    .where(eq(books.id, book.id));
+
+                totalXP += isFirstRead ? 100 : 50;
+            }
+        });
+
+        // 3. Trigger achievements and stats
+        try {
+            const { checkAchievements } = await import('./services/achievements.js');
+            await checkAchievements(1, ['READ']);
+        } catch (e) {
+            console.error('[BulkRead] Achievement Error:', e);
+        }
+
+        try {
+            const { recalculateStats } = await import('./services/stats.js');
+            await recalculateStats();
+        } catch (e) {
+            console.error('[BulkRead] Stats Error:', e);
+        }
+
+        res.json({ success: true, count: bookIds.length });
+    } catch (e) {
+        console.error('[BulkRead] Main Error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 app.post('/api/books/bulk/tags', async (req, res) => {
     try {
         const { bookIds, tags } = req.body;
