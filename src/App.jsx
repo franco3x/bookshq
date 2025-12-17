@@ -12,6 +12,7 @@ import Stats from './pages/Stats';
 import CategoryLevels from './pages/CategoryLevels';
 import AuthorRankings from './pages/AuthorRankings';
 import Settings from './pages/Settings';
+import ImportGoodreads from './pages/ImportGoodreads';
 
 function App() {
   return (
@@ -28,6 +29,7 @@ function App() {
         <Route path="stats/categories" element={<CategoryLevels />} />
         <Route path="stats/authors" element={<AuthorRankings />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="import/goodreads" element={<ImportGoodreads />} />
       </Route>
     </Routes>
   );

@@ -18,6 +18,23 @@ export const api = {
         return response.json();
     },
 
+    // Upload Goodreads Export
+    importGoodreadsCSV: async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch(`${API_BASE}/import/goodreads`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            throw new Error('Import failed');
+        }
+
+        return response.json();
+    },
+
     // Books
     getBooks: async () => {
         const response = await fetch(`${API_BASE}/books`);

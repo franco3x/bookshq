@@ -28,6 +28,15 @@ export const books = pgTable('books', {
     dateLastRead: timestamp('date_last_read'),
     dateFirstRead: timestamp('date_first_read'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
+
+    // Goodreads Integration
+    goodreadsId: text('goodreads_id'),
+    userRating: integer('user_rating'), // 1-5 stars
+    avgRating: text('avg_rating'), // Store as string (e.g., "4.23")
+    userReview: text('user_review'),
+    pageCount: integer('page_count'),
+    yearPublished: integer('year_published'),
+    readStatus: text('read_status'), // 'to-read', 'reading', 'read'
 });
 
 // Highlights Table (References books and authors)

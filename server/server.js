@@ -18,6 +18,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 import { parseMyClippings } from './services/parser.js';
 import { parseReadwiseCSV } from './services/readwise-parser.js';
 import { saveHighlights } from './services/db-service.js';
+import { importGoodreadsCSV } from './services/goodreads-import.js';
 
 app.use(cors());
 app.use(express.json());
@@ -51,6 +52,22 @@ app.post('/api/import/readwise', upload.single('file'), async (req, res) => {
         res.json(result);
     } catch (error) {
         console.error('Readwise import error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Import Goodreads CSV
+app.post('/api/import/goodreads', upload.single('file'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    try {
+        const fileContent = req.file.buffer.toString('utf-8');
+        const results = await importGoodreadsCSV(fileContent);
+        res.json(results);
+    } catch (error) {
+        console.error('Goodreads import error:', error);
         res.status(500).json({ error: error.message });
     }
 });

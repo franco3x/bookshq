@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
-import { ArrowLeft, Book as BookIcon, Trophy, Highlighter, Clock, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Book as BookIcon, Trophy, Highlighter, Clock, CheckCircle, Star, Hash, Calendar } from 'lucide-react';
 
 export default function BookDetail() {
     const { id } = useParams();
@@ -507,6 +507,37 @@ export default function BookDetail() {
                                 <div className="px-4 py-2 rounded-full bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 text-[var(--accent-primary)] flex items-center gap-2">
                                     <CheckCircle size={16} />
                                     <span>Read {book.readCount}x</span>
+                                </div>
+                            )}
+
+                            {/* Goodreads Specific Metadata */}
+                            {(book.userRating || book.avgRating || book.pageCount || book.yearPublished) && (
+                                <div className="flex flex-wrap gap-3 pt-4 border-t border-white/5 w-full">
+                                    {book.userRating && (
+                                        <div className="flex items-center gap-1 text-xs bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 rounded-full text-yellow-500">
+                                            <Star size={14} fill="currentColor" />
+                                            <span className="font-bold">{book.userRating}</span>
+                                            <span className="opacity-70 ml-0.5">Your Rating</span>
+                                        </div>
+                                    )}
+                                    {book.avgRating && (
+                                        <div className="flex items-center gap-1 text-xs bg-white/5 border border-white/10 px-3 py-1.5 rounded-full text-[var(--text-secondary)]">
+                                            <Star size={14} className="text-yellow-500/50" />
+                                            <span>{book.avgRating} <span className="opacity-50 text-[10px]">Goodreads</span></span>
+                                        </div>
+                                    )}
+                                    {book.pageCount && (
+                                        <div className="flex items-center gap-1 text-xs bg-white/5 border border-white/10 px-3 py-1.5 rounded-full text-[var(--text-secondary)]">
+                                            <Hash size={14} className="opacity-50" />
+                                            <span>{book.pageCount} pgs</span>
+                                        </div>
+                                    )}
+                                    {book.yearPublished && (
+                                        <div className="flex items-center gap-1 text-xs bg-white/5 border border-white/10 px-3 py-1.5 rounded-full text-[var(--text-secondary)]">
+                                            <Calendar size={14} className="opacity-50" />
+                                            <span>{book.yearPublished}</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
