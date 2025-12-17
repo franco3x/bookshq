@@ -228,6 +228,26 @@ export async function checkAchievements(userId = 1, triggers = ['ALL']) {
                     });
                     newUnlocks.push({ ...achievement, unlockedAt: new Date() });
                     console.log(`🎉 Unlocked Static: ${achievement.title}`);
+                } else if (progress > 0) {
+                    // Save progress for locked achievements so UI can show progress bars
+                    const existing = existingUnlocks.find(ua => ua.achievementId === achievement.id);
+                    if (existing) {
+                        // Update existing progress
+                        await tx.update(userAchievements)
+                            .set({ progress })
+                            .where(and(
+                                eq(userAchievements.userId, userId),
+                                eq(userAchievements.achievementId, achievement.id)
+                            ));
+                    } else {
+                        // Insert new locked achievement with progress
+                        await tx.insert(userAchievements).values({
+                            userId,
+                            achievementId: achievement.id,
+                            unlockedAt: null, // Not unlocked yet
+                            progress: progress
+                        });
+                    }
                 }
             }
         });

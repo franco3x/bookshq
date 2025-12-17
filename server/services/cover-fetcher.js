@@ -19,12 +19,18 @@ export async function fetchBookCover(title, author) {
 
             let coverUrl = null;
             if (volumeInfo.imageLinks) {
-                // Prefer extraLarge, large, medium, small, then thumbnail
-                coverUrl = volumeInfo.imageLinks.extraLarge ||
+                // Prefer largest available
+                const bestUrl = volumeInfo.imageLinks.extraLarge ||
                     volumeInfo.imageLinks.large ||
                     volumeInfo.imageLinks.medium ||
                     volumeInfo.imageLinks.small ||
                     volumeInfo.imageLinks.thumbnail;
+
+                if (bestUrl) {
+                    // Magically improve quality by removing zoom and edge curl
+                    coverUrl = bestUrl.replace('http:', 'https:')
+                        .replace('&edge=curl', '');
+                }
             }
 
             return { coverUrl, genre };

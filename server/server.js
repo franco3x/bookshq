@@ -215,7 +215,7 @@ app.get('/api/achievements', async (req, res) => {
             const unlock = unlockMap.get(a.id);
             return {
                 ...a,
-                unlocked: !!unlock,
+                unlocked: !!(unlock?.unlockedAt),
                 unlockedAt: unlock?.unlockedAt || null,
                 progress: unlock?.progress || 0
             };
