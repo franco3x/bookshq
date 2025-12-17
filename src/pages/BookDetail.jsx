@@ -170,6 +170,19 @@ export default function BookDetail() {
         }
     };
 
+    const handleDecrementRead = async () => {
+        if (!confirm('Remove one read from this book?')) return;
+        try {
+            const res = await fetch(`/api/books/${id}/read/decrement`, { method: 'PATCH' });
+            if (res.ok) {
+                const data = await res.json();
+                setBook(prev => ({ ...prev, readCount: data.readCount }));
+            }
+        } catch (error) {
+            console.error('Failed to decrement read count', error);
+        }
+    };
+
     if (loading) return <div>Loading...</div>;
     if (!book) return <div>Book not found</div>;
 
@@ -498,7 +511,7 @@ export default function BookDetail() {
                             )}
                         </div>
 
-                        <div className="pt-8">
+                        <div className="pt-8 flex gap-3">
                             <button
                                 onClick={handleMarkAsRead}
                                 className="px-6 py-3 rounded-xl bg-[var(--accent-primary)] text-black font-bold hover:brightness-110 transition-all active:scale-95 flex items-center gap-2"
@@ -506,6 +519,15 @@ export default function BookDetail() {
                                 <CheckCircle size={20} />
                                 {book.readCount > 0 ? 'Log Another Read' : 'Mark as Read'}
                             </button>
+                            {book.readCount > 0 && (
+                                <button
+                                    onClick={handleDecrementRead}
+                                    className="px-4 py-3 rounded-xl bg-[var(--bg-tertiary)] text-[var(--text-secondary)] font-medium hover:bg-[var(--bg-secondary)] transition-all active:scale-95"
+                                    title="Remove one read count"
+                                >
+                                    −1
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

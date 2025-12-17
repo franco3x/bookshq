@@ -161,6 +161,42 @@ app.post('/api/books/:id/read', async (req, res) => {
     }
 });
 
+// Decrement read count (Undo accidental double-mark)
+app.patch('/api/books/:id/read/decrement', async (req, res) => {
+    const bookId = parseInt(req.params.id);
+
+    try {
+        const book = await db.query.books.findFirst({
+            where: eq(books.id, bookId)
+        });
+
+        if (!book) return res.status(404).json({ error: 'Book not found' });
+        if ((book.readCount || 0) === 0) {
+            return res.status(400).json({ error: 'Book has not been marked as read yet' });
+        }
+
+        const newCount = Math.max(0, (book.readCount || 0) - 1);
+
+        await db.update(books)
+            .set({ readCount: newCount })
+            .where(eq(books.id, bookId));
+
+        // Recalculate stats to reflect the change
+        const { recalculateStats } = await import('./services/stats.js');
+        await recalculateStats().catch(console.error);
+
+        const xpResult = await db.query.userStats.findFirst();
+
+        res.json({
+            success: true,
+            readCount: newCount,
+            ...xpResult
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Manual Recalculate Stats Endpoint
 app.post('/api/stats/recalculate', async (req, res) => {
     try {
