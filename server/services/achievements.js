@@ -59,7 +59,17 @@ export async function checkAchievements(userId = 1, triggers = ['ALL']) {
         });
         const genreCounts = {};
         for (const b of booksWithGenre) {
-            if (b.genre) genreCounts[b.genre] = (genreCounts[b.genre] || 0) + 1;
+            if (b.genre) {
+                // Handle both array and string formats
+                const genres = Array.isArray(b.genre) ? b.genre : [b.genre];
+                for (const g of genres) {
+                    const key = g.trim();
+                    // Skip empty genres
+                    if (key) {
+                        genreCounts[key] = (genreCounts[key] || 0) + 1;
+                    }
+                }
+            }
         }
 
         // Author Stats (Nationality, Vocation)

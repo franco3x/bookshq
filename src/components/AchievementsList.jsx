@@ -56,8 +56,13 @@ export default function AchievementsList() {
     return (
         <div className="space-y-8">
             {categories.map(category => {
-                const categoryAchievements = achievements.filter(a => a.category === category);
+                let categoryAchievements = achievements.filter(a => a.category === category);
                 const isPriority = sortOrder.includes(category);
+
+                // Sort non-priority categories by XP (highest tier first)
+                if (!isPriority) {
+                    categoryAchievements = categoryAchievements.sort((a, b) => b.xpReward - a.xpReward);
+                }
 
                 // Show all if priority, otherwise show max 6 unless expanded
                 const showCount = (isPriority || expandedCategories[category]) ? categoryAchievements.length : 6;
