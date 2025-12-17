@@ -1,5 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import { Trophy, Lock, Star } from 'lucide-react';
 import * as Icons from 'lucide-react';
@@ -85,12 +86,49 @@ export default function AchievementsList() {
                                 const unlockedDate = achievement.unlockedAt ? new Date(achievement.unlockedAt) : null;
                                 const isValidDate = unlockedDate && !isNaN(unlockedDate);
 
+                                // Parse achievement title to extract dimension filter
+                                const getDimensionLink = () => {
+                                    if (isPriority) return null; // Big 3 not clickable
+
+                                    const { title, category } = achievement;
+
+                                    if (category === 'Genre') {
+                                        // "Student of Fiction" -> genre=Fiction
+                                        const match = title.match(/of (.+)$/);
+                                        if (match) return `/books?status=read&genre=${encodeURIComponent(match[1])}`;
+                                    } else if (category === 'Author') {
+                                        // "Fan of Malcolm Gladwell" -> author=Malcolm Gladwell
+                                        const match = title.match(/of (.+)$/);
+                                        if (match) return `/books?status=read&author=${encodeURIComponent(match[1])}`;
+                                    } else if (category === 'Global') {
+                                        // "Resident of United States" -> nationality=United States
+                                        const match = title.match(/of (.+)$/);
+                                        if (match) return `/books?status=read&nationality=${encodeURIComponent(match[1])}`;
+                                    } else if (category === 'Vocation') {
+                                        // "Apprentice Comedian" -> vocation=Comedian
+                                        const prefixes = ['Curious', 'Apprentice', 'Journeyman', 'Master', 'Grandmaster'];
+                                        for (const prefix of prefixes) {
+                                            if (title.startsWith(prefix)) {
+                                                const vocation = title.substring(prefix.length).trim();
+                                                return `/books?status=read&vocation=${encodeURIComponent(vocation)}`;
+                                            }
+                                        }
+                                    }
+                                    return null;
+                                };
+
+                                const dimensionLink = getDimensionLink();
+                                const CardWrapper = dimensionLink ? Link : 'div';
+                                const cardProps = dimensionLink ? { to: dimensionLink } : {};
+
                                 return (
-                                    <div
+                                    <CardWrapper
                                         key={achievement.id}
-                                        className={`relative p-4 rounded-xl border transition-all ${isUnlocked
-                                            ? 'bg-[var(--bg-secondary)] border-[var(--glass-border)]'
-                                            : 'bg-[var(--bg-tertiary)]/30 border-dashed border-[var(--glass-border)] opacity-60'
+                                        {...cardProps}
+                                        className={`relative p-4 rounded-xl border transition-all ${dimensionLink ? 'cursor-pointer hover:bg-[var(--bg-tertiary)]/50 hover:border-[var(--accent-primary)]/30' : ''
+                                            } ${isUnlocked
+                                                ? 'bg-[var(--bg-secondary)] border-[var(--glass-border)]'
+                                                : 'bg-[var(--bg-tertiary)]/30 border-dashed border-[var(--glass-border)] opacity-60'
                                             }`}
                                     >
                                         <div className="flex gap-4">
@@ -141,7 +179,7 @@ export default function AchievementsList() {
                                                 )}
                                             </div>
                                         </div>
-                                    </div>
+                                    </CardWrapper>
                                 );
                             })}
                         </div>

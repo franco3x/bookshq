@@ -111,7 +111,17 @@ export default function Books() {
                     : book.author?.vocation?.toLowerCase() === vocationFilter.toLowerCase()
             );
 
-            return matchesSearch && matchesTag && matchesGenre && matchesNationality && matchesRace && matchesGender && matchesVocation;
+            const statusFilter = searchParams.get('status');
+            const matchesStatus = !statusFilter || (
+                statusFilter === 'read' ? (book.readCount > 0) :
+                    statusFilter === 'unread' ? (!book.readCount || book.readCount === 0) : true
+            );
+
+            // Author filter
+            const authorFilter = searchParams.get('author');
+            const matchesAuthor = !authorFilter || (book.author?.name === authorFilter);
+
+            return matchesSearch && matchesTag && matchesGenre && matchesNationality && matchesRace && matchesGender && matchesVocation && matchesStatus && matchesAuthor;
         })
         .sort((a, b) => {
             switch (sortBy) {
