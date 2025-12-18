@@ -2,9 +2,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { api } from '../utils/api';
 import { useLocation } from 'react-router-dom';
-import { groupBySimple, aggregateArrayField, aggregateAuthorDemographic } from '../utils/analytics';
+import { groupBySimple, aggregateArrayField, aggregateAuthorDemographic, aggregateByTime } from '../utils/analytics';
 import SimpleBarChart from '../components/charts/SimpleBarChart';
 import DemographicPieChart from '../components/charts/DemographicPieChart';
+import ReadingTimelineChart from '../components/charts/ReadingTimelineChart';
 import { RefreshCw, Filter, Calendar } from 'lucide-react';
 
 export default function Analytics() {
@@ -73,6 +74,11 @@ export default function Analytics() {
     const vocationData = useMemo(() => {
         return aggregateAuthorDemographic(filteredBooks, 'vocation').slice(0, 8);
     }, [filteredBooks]);
+
+    const timelineData = useMemo(() => {
+        const granularity = yearFilter === 'All' ? 'year' : 'month';
+        return aggregateByTime(filteredBooks, granularity);
+    }, [filteredBooks, yearFilter]);
 
     // Available Years for Filter
     const availableYears = useMemo(() => {
@@ -177,12 +183,12 @@ export default function Analytics() {
                     <SimpleBarChart title="Author Vocations" data={vocationData} />
                 </div>
 
-                {/* 5. Placeholder for Timeline (Coming Soon) */}
-                <div className="glass-panel p-6 rounded-2xl flex items-center justify-center border-dashed border-2 border-[var(--glass-border)] h-[350px] opacity-60">
-                    <div className="text-center">
-                        <Calendar size={32} className="mx-auto mb-2 opacity-50" />
-                        <p className="text-sm">Reading Timeline (Coming Soon)</p>
-                    </div>
+                {/* 5. Reading Timeline */}
+                <div className="glass-panel p-6 rounded-2xl md:col-span-2 lg:col-span-3 h-[350px]">
+                    <ReadingTimelineChart
+                        title={yearFilter === 'All' ? "Reading History (by Year)" : `Reading Activity in ${yearFilter} (by Month)`}
+                        data={timelineData}
+                    />
                 </div>
             </div>
         </div>

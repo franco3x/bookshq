@@ -114,6 +114,50 @@ export function aggregateAuthorDemographic(books, field) {
  * @param {String} rowExtractor - Function or field for row (e.g. genre)
  * @param {String} colExtractor - Function or field for col (e.g. author.gender)
  */
+/**
+ * Aggregate books by time period (Year or Month).
+ * 
+ * @param {Array} books - List of books
+ * @param {String} granularity - 'year' or 'month'
+ * @returns {Array} - [{ date: '2024', label: '2024', value: 5 }]
+ */
+export function aggregateByTime(books, granularity = 'year') {
+    const counts = {};
+    let minTime = Infinity;
+    let maxTime = -Infinity;
+
+    // 1. Count items
+    books.forEach(book => {
+        if (!book.dateLastRead) return;
+
+        const date = new Date(book.dateLastRead);
+        const time = date.getTime();
+        if (time < minTime) minTime = time;
+        if (time > maxTime) maxTime = time;
+
+        let key;
+        let label;
+
+        if (granularity === 'month') {
+            key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // "2024-01"
+            label = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }); // "Jan 24" (or just Jan if filtered, handled by caller?)
+            // actually better to separate key and label logic or just return both
+        } else {
+            key = String(date.getFullYear()); // "2024"
+            label = key;
+        }
+
+        if (!counts[key]) counts[key] = { key, label, value: 0, sortKey: key };
+        counts[key].value++;
+    });
+
+    // 2. Fill gaps (Optional but good for charts)
+    // For now, let's just return sorted existing data to keep it simple.
+    // Gaps in years might look weird in a line chart if missing 2020 but usually okay.
+
+    return Object.values(counts).sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+}
+
 export function crossTabulate(books, rowType, colType) {
     // Implementation for later...
     // For V1 we might stick to simple charts first.
