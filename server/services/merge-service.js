@@ -1,5 +1,5 @@
 import { db } from '../database/db.js';
-import { books, authors, highlights, bookAuthors } from '../database/schema.js';
+import { books, authors, highlights, bookAuthors, authorLevels } from '../database/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 
 /**
@@ -41,18 +41,27 @@ export async function mergeBooks(targetId, sourceId) {
         // 3. Merge Metadata
         const updatedMetadata = {
             readCount: (target.readCount || 0) + (source.readCount || 0),
-            // Take the most recent dates if available
-            dateLastRead: (source.dateLastRead && (!target.dateLastRead || new Date(source.dateLastRead) > new Date(target.dateLastRead)))
-                ? source.dateLastRead
-                : target.dateLastRead,
+            // Take the OLDEST dateLastRead (as requested, to avoid overwriting historical dates with recent import dates)
+            dateLastRead: (source.dateLastRead && target.dateLastRead)
+                ? (new Date(source.dateLastRead) < new Date(target.dateLastRead) ? source.dateLastRead : target.dateLastRead)
+                : (source.dateLastRead || target.dateLastRead),
+
             // Keep existing identifiers if target is missing them
             goodreadsId: target.goodreadsId || source.goodreadsId,
             asin: target.asin || source.asin,
             isbn10: target.isbn10 || source.isbn10,
             isbn13: target.isbn13 || source.isbn13,
-            // Merge arrays (tags, genre)
-            tags: Array.from(new Set([...(target.tags || []), ...(source.tags || [])])),
-            genre: Array.from(new Set([...(target.genre || []), ...(source.genre || [])])),
+
+            // Merge arrays (tags, genre) - Ensure they are arrays to prevent spreading strings into chars
+            tags: Array.from(new Set([
+                ...(Array.isArray(target.tags) ? target.tags : (target.tags ? [target.tags] : [])),
+                ...(Array.isArray(source.tags) ? source.tags : (source.tags ? [source.tags] : []))
+            ])),
+            genre: Array.from(new Set([
+                ...(Array.isArray(target.genre) ? target.genre : (target.genre ? [target.genre] : [])),
+                ...(Array.isArray(source.genre) ? source.genre : (source.genre ? [source.genre] : []))
+            ])),
+
             // Take higher ratings/reviews if target is empty
             userRating: target.userRating || source.userRating,
             userReview: target.userReview || source.userReview,
@@ -113,7 +122,12 @@ export async function mergeAuthors(targetId, sourceId) {
             )
         `);
 
-        // 2. Merge Metadata (bio, dates, etc.)
+        // 2. Migrate Highlights
+        await tx.update(highlights)
+            .set({ authorId: targetId })
+            .where(eq(highlights.authorId, sourceId));
+
+        // 3. Merge Metadata (bio, dates, etc.)
         const updatedMetadata = {
             bio: target.bio || source.bio,
             birthYear: target.birthYear || source.birthYear,
@@ -126,7 +140,24 @@ export async function mergeAuthors(targetId, sourceId) {
             .set(updatedMetadata)
             .where(eq(authors.id, targetId));
 
-        // 3. Cleanup source author
+        // 4. Merge XP / Levels
+        const sourceLevel = await tx.query.authorLevels.findFirst({ where: eq(authorLevels.authorId, sourceId) });
+        if (sourceLevel && sourceLevel.xp > 0) {
+            const targetLevel = await tx.query.authorLevels.findFirst({ where: eq(authorLevels.authorId, targetId) });
+            if (targetLevel) {
+                await tx.update(authorLevels)
+                    .set({ xp: targetLevel.xp + sourceLevel.xp })
+                    .where(eq(authorLevels.authorId, targetId));
+            } else {
+                await tx.insert(authorLevels)
+                    .values({ authorId: targetId, xp: sourceLevel.xp });
+            }
+        }
+
+        // Cleanup source level record
+        await tx.delete(authorLevels).where(eq(authorLevels.authorId, sourceId));
+
+        // 5. Cleanup source author
         await tx.delete(authors).where(eq(authors.id, sourceId));
 
         return { success: true, targetId };

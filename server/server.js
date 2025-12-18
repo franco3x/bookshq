@@ -471,10 +471,17 @@ app.patch('/api/books/:id', async (req, res) => {
                                 await tx.update(highlights)
                                     .set({ authorId: newPrimaryAuthorId })
                                     .where(eq(highlights.authorId, removedId));
+                            } else {
+                                // If no other author, just nullify the author link in highlights
+                                await tx.update(highlights)
+                                    .set({ authorId: null })
+                                    .where(eq(highlights.authorId, removedId));
                             }
 
-                            // 2. Delete the orphaned author
-                            // DB Constraints are now ON DELETE CASCADE for author_levels and book_authors
+                            // 2. Clear Author Levels
+                            await tx.delete(authorLevels).where(eq(authorLevels.authorId, removedId));
+
+                            // 3. Delete the orphaned author
                             await tx.delete(authors).where(eq(authors.id, removedId));
                         }
                     }
