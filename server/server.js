@@ -685,50 +685,58 @@ app.post('/api/authors', async (req, res) => {
 
 app.get('/api/authors', async (req, res) => {
     try {
-        // Fetch all authors with their books via bookAuthors junction
+        // 1. Fetch all authors (id and name only for list view)
+        // orderBy name for default sort
         const allAuthors = await db.query.authors.findMany({
-            orderBy: authors.name,
-            with: {
-                bookAuthors: {
-                    with: {
-                        book: true
-                    }
-                }
-            }
+            columns: {
+                id: true,
+                name: true
+            },
+            orderBy: authors.name
         });
 
-        // Get ALL highlight counts for ALL books in a single query
+        // 2. Fetch Book Counts (GROUP BY authorId in bookAuthors)
+        const bookCounts = await db
+            .select({
+                authorId: bookAuthors.authorId,
+                count: sql`count(*)`.mapWith(Number)
+            })
+            .from(bookAuthors)
+            .groupBy(bookAuthors.authorId);
+
+        const bookCountMap = new Map(bookCounts.map(b => [b.authorId, b.count]));
+
+        // 3. Fetch Highlight Counts (GROUP BY authorId in highlights - utilizing denormalized col)
         const highlightCounts = await db
             .select({
-                bookId: highlights.bookId,
+                authorId: highlights.authorId,
                 count: sql`count(*)`.mapWith(Number)
             })
             .from(highlights)
-            .groupBy(highlights.bookId);
+            .where(sql`${highlights.authorId} IS NOT NULL`)
+            .groupBy(highlights.authorId);
 
-        // Create a lookup map for O(1) access
-        const countMap = new Map(highlightCounts.map(hc => [hc.bookId, hc.count]));
+        const highlightCountMap = new Map(highlightCounts.map(h => [h.authorId, h.count]));
 
-        // Fetch all author levels
+        // 4. Fetch Levels
         const levels = await db.query.authorLevels.findMany();
         const levelMap = new Map(levels.map(l => [l.authorId, { xp: l.xp, level: l.level }]));
 
-        // Map the counts and levels to authors (in-memory, super fast)
-        const authorsWithCounts = allAuthors.map(author => {
-            // Flatten bookAuthors to books
-            const books = author.bookAuthors.map(ba => ba.book);
-
+        // 5. Merge in memory (fast, no heavy objects)
+        const optimizedAuthors = allAuthors.map(author => {
             return {
                 ...author,
                 authorLevel: levelMap.get(author.id) || { xp: 0, level: 1 },
-                books: books.map(book => ({
-                    ...book,
-                    highlightCount: countMap.get(book.id) || 0
-                }))
+                // Allow UI to access length or raw property
+                bookCount: bookCountMap.get(author.id) || 0,
+                // Provide "books" array with length proxy for compatibility with sorting logic "b.books?.length"
+                // OR just update frontend to use bookCount
+                books: Array(bookCountMap.get(author.id) || 0).fill(null),
+                totalHighlights: highlightCountMap.get(author.id) || 0
             };
         });
 
-        res.json(authorsWithCounts);
+        res.json(optimizedAuthors);
     } catch (e) {
         res.status(500).json({ error: e.message });
     }

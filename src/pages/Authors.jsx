@@ -56,13 +56,11 @@ export default function Authors() {
             case 'name-desc':
                 return b.name.localeCompare(a.name);
             case 'books-desc':
-                return (b.books?.length || 0) - (a.books?.length || 0);
+                return (b.bookCount || 0) - (a.bookCount || 0);
             case 'books-asc':
-                return (a.books?.length || 0) - (b.books?.length || 0);
+                return (a.bookCount || 0) - (b.bookCount || 0);
             case 'highlights-desc':
-                const aHighlights = a.books?.reduce((sum, book) => sum + (book.highlightCount || 0), 0) || 0;
-                const bHighlights = b.books?.reduce((sum, book) => sum + (book.highlightCount || 0), 0) || 0;
-                return bHighlights - aHighlights;
+                return (b.totalHighlights || 0) - (a.totalHighlights || 0);
             default:
                 return 0;
         }
@@ -160,7 +158,7 @@ export default function Authors() {
                                 </thead>
                                 <tbody className="divide-y divide-[var(--glass-border)]">
                                     {sortedAuthors.map(author => {
-                                        const totalHighlights = author.books?.reduce((sum, book) => sum + (book.highlightCount || 0), 0) || 0;
+                                        const totalHighlights = author.totalHighlights || 0;
                                         const level = author.authorLevel?.level || 1;
 
                                         return (
@@ -179,7 +177,7 @@ export default function Authors() {
                                                 <td className="p-4 text-center">
                                                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--glass-border)]">
                                                         <BookOpen size={12} />
-                                                        {author.books?.length || 0}
+                                                        {author.bookCount || 0}
                                                     </span>
                                                 </td>
                                                 <td className="p-4 text-right">

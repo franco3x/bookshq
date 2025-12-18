@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { User, BookOpen, Highlighter } from 'lucide-react';
 
 export default function AuthorCard({ author }) {
-    const totalHighlights = author.books?.reduce((sum, book) => sum + (book.highlightCount || 0), 0) || 0;
+    const totalHighlights = author.totalHighlights || 0;
     const level = author.authorLevel?.level || 1;
 
     return (
@@ -24,7 +24,7 @@ export default function AuthorCard({ author }) {
                 <div className="flex items-center gap-3 text-sm text-[var(--text-secondary)] mt-1">
                     <span className="flex items-center gap-1">
                         <BookOpen size={14} />
-                        {author.books?.length || 0} books
+                        {author.bookCount || 0} books
                     </span>
                     <span className="flex items-center gap-1">
                         <Highlighter size={14} />
