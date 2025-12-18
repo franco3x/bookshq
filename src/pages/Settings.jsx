@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, FileText, Book as BookIcon, GitMerge } from 'lucide-react';
+import { Download, FileText, Book as BookIcon, GitMerge, Upload } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Settings() {
@@ -95,6 +95,25 @@ export default function Settings() {
                 >
                     <GitMerge size={20} />
                     Open Consolidation Portal
+                </Link>
+            </div>
+
+            {/* Import Data */}
+            <div className="glass-panel p-8 rounded-2xl">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Upload className="text-[var(--accent-primary)]" />
+                    Import Data
+                </h2>
+                <p className="text-[var(--text-secondary)] mb-6">
+                    Import your reading history, ratings, and shelves from Goodreads to enrich your library metadata.
+                </p>
+
+                <Link
+                    to="/import/goodreads"
+                    className="px-6 py-3 bg-[var(--bg-tertiary)] hover:bg-[var(--glass-border)] text-[var(--text-primary)] rounded-xl font-medium flex items-center gap-3 transition-colors border border-[var(--glass-border)] inline-flex"
+                >
+                    <Upload size={20} />
+                    Import from Goodreads
                 </Link>
             </div>
 

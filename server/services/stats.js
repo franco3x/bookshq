@@ -42,9 +42,15 @@ export async function recalculateStats() {
             // Reading XP
             bookXP += XP_PER_BOOK_IMPORT;
 
-            if (book.readCount > 0) {
-                // First read = 100, others = 50
-                const readXP = XP_PER_BOOK_READ + (Math.max(0, book.readCount - 1) * XP_PER_BOOK_REREAD);
+            // Check if book is read (via count OR status)
+            const isRead = (book.readCount && book.readCount > 0) || book.readStatus === 'read';
+
+            if (isRead) {
+                // Ensure effective count is at least 1 if status is read
+                const effectiveCount = Math.max(1, book.readCount || 0);
+
+                // First read = XP_PER_BOOK_READ, others = XP_PER_BOOK_REREAD
+                const readXP = XP_PER_BOOK_READ + (Math.max(0, effectiveCount - 1) * XP_PER_BOOK_REREAD);
                 bookXP += readXP;
             }
 

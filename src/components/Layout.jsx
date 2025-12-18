@@ -42,7 +42,6 @@ export default function Layout() {
         { icon: Highlighter, label: 'Highlights', path: '/highlights' },
         { icon: BarChart2, label: 'Stats', path: '/stats' },
         { icon: Layers, label: 'Dimensions', path: '/stats/categories' },
-        { icon: Upload, label: 'Goodreads', path: '/import/goodreads' },
         { icon: Settings, label: 'Settings', path: '/settings' },
     ];
 
