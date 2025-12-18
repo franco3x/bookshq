@@ -122,7 +122,7 @@ export default function AuthorDetail() {
                                         <div className="flex justify-between">
                                             <span>Books Read:</span>
                                             <span className="font-mono text-white">
-                                                {author.books?.filter(b => b.readCount > 0 || b.readStatus === 'read').length || 0}
+                                                {author.books?.filter(b => b.readCount > 0 || b.readStatus === 'read' || b.dateLastRead).length || 0}
                                             </span>
                                         </div>
                                     </div>

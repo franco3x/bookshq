@@ -42,8 +42,8 @@ export async function recalculateStats() {
             // Reading XP
             bookXP += XP_PER_BOOK_IMPORT;
 
-            // Check if book is read (via count OR status)
-            const isRead = (book.readCount && book.readCount > 0) || book.readStatus === 'read';
+            // Check if book is read (via count OR status OR date)
+            const isRead = (book.readCount && book.readCount > 0) || book.readStatus === 'read' || book.dateLastRead;
 
             if (isRead) {
                 // Ensure effective count is at least 1 if status is read

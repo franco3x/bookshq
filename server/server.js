@@ -18,6 +18,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 import { parseMyClippings } from './services/parser.js';
 import { parseReadwiseCSV } from './services/readwise-parser.js';
 import { saveHighlights } from './services/db-service.js';
+import { fetchBookCover } from './services/cover-fetcher.js';
 import { importGoodreadsCSV } from './services/goodreads-import.js';
 import { mergeBooks, mergeAuthors } from './services/merge-service.js';
 
@@ -519,9 +520,9 @@ app.patch('/api/books/:id', async (req, res) => {
 // Admin: Backfill covers
 app.get('/api/admin/backfill-covers', async (req, res) => {
     try {
-        const { fetchBookCover } = await import('./services/cover-fetcher.js');
+        // Removed dynamic import
         const booksWithoutCovers = await db.query.books.findMany({
-            where: (books, { isNull }) => isNull(books.coverImage),
+            where: (books, { isNull, or, eq }) => or(isNull(books.coverImage), eq(books.coverImage, '')),
             with: { author: true }
         });
 
@@ -568,7 +569,7 @@ app.post('/api/books/:id/cover/fetch', async (req, res) => {
         if (!book) return res.status(404).json({ error: 'Book not found' });
         if (!book.author) return res.status(400).json({ error: 'Book has no author' });
 
-        const { fetchBookCover } = await import('./services/cover-fetcher.js');
+        // Imported statically now
         const { coverUrl, genre } = await fetchBookCover(book.title, book.author.name);
 
         if (coverUrl || genre) {

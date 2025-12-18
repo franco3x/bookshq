@@ -101,26 +101,35 @@ export async function mergeAuthors(targetId, sourceId) {
 
         if (!target || !source) throw new Error("One or both authors not found.");
 
-        // 1. Reassign all books
-        // We update the bookAuthors junction table
+        // 1. Reassign Books (Handle duplicates first!)
+        // Find overlaps: Books where BOTH authors are currently assigned
+        const sourceBooks = await tx.query.bookAuthors.findMany({
+            where: eq(bookAuthors.authorId, sourceId),
+            with: { book: true }
+        });
+
+        for (const sb of sourceBooks) {
+            // Check if target is also on this book
+            const targetConn = await tx.query.bookAuthors.findFirst({
+                where: and(
+                    eq(bookAuthors.bookId, sb.bookId),
+                    eq(bookAuthors.authorId, targetId)
+                )
+            });
+
+            if (targetConn) {
+                // COLLISION: Both authors are on this book.
+                // We keep the target connection and DELETE the source connection
+                // to avoid a unique constraint violation on update.
+                await tx.delete(bookAuthors)
+                    .where(eq(bookAuthors.id, sb.id));
+            }
+        }
+
+        // Now safe to move remaining connections
         await tx.update(bookAuthors)
             .set({ authorId: targetId })
             .where(eq(bookAuthors.authorId, sourceId));
-
-        // Note: Some books might have had BOTH authors. In that case, we might have duplicate rows.
-        // Drizzle/SQL might error on unique constraints if we have (book_id, author_id) PK.
-        // Let's handle duplicate rows after the update.
-        await tx.run(sql`
-            DELETE FROM book_authors 
-            WHERE id IN (
-                SELECT id FROM (
-                    SELECT id, ROW_NUMBER() OVER (PARTITION BY book_id, author_id ORDER BY id) as row_num
-                    FROM book_authors
-                    WHERE author_id = ${targetId}
-                ) t
-                WHERE t.row_num > 1
-            )
-        `);
 
         // 2. Migrate Highlights
         await tx.update(highlights)

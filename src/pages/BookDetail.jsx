@@ -548,7 +548,7 @@ export default function BookDetail() {
                                 className="px-6 py-3 rounded-xl bg-[var(--accent-primary)] text-black font-bold hover:brightness-110 transition-all active:scale-95 flex items-center gap-2"
                             >
                                 <CheckCircle size={20} />
-                                {book.readCount > 0 ? 'Log Another Read' : 'Mark as Read'}
+                                {(book.readCount > 0 || book.readStatus === 'read' || book.dateLastRead) ? 'Log Another Read' : 'Mark as Read'}
                             </button>
                             {book.readCount > 0 && (
                                 <button
