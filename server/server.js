@@ -447,6 +447,12 @@ app.post('/api/books/bulk/read', async (req, res) => {
     }
 });
 
+// Helper: Title Case
+const toTitleCase = (str) => {
+    if (!str || typeof str !== 'string') return str;
+    return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+};
+
 app.post('/api/books/bulk/tags', async (req, res) => {
     try {
         const { bookIds, tags } = req.body;
@@ -459,10 +465,13 @@ app.post('/api/books/bulk/tags', async (req, res) => {
             return res.status(400).json({ error: 'tags must be an array' });
         }
 
+        // Normalize tags
+        const normalizedTags = tags.map(t => toTitleCase(t));
+
         // Update all specified books with the new tags
         const { inArray } = await import('drizzle-orm');
         await db.update(books)
-            .set({ tags })
+            .set({ tags: normalizedTags })
             .where(inArray(books.id, bookIds));
 
         res.json({ success: true, updated: bookIds.length });
@@ -478,7 +487,10 @@ app.patch('/api/books/:id', async (req, res) => {
         const { genre, dateLastRead, authorIds } = req.body;
 
         const updateData = {};
-        if (genre !== undefined) updateData.genre = genre;
+        if (genre !== undefined) {
+            // Normalize genre
+            updateData.genre = Array.isArray(genre) ? genre.map(g => toTitleCase(g)) : [];
+        }
         if (dateLastRead !== undefined) updateData.dateLastRead = new Date(dateLastRead);
 
         // Handle authors update if provided
