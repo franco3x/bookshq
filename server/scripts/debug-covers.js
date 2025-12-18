@@ -4,9 +4,9 @@ import { fetchBookCover } from '../services/cover-fetcher.js';
 async function run() {
     console.log('🔍 Testing Cover Fetcher...');
 
-    // Test case: Book mentioned by user
-    const title = "Death by Meeting";
-    const author = "Patrick Lencioni";
+    // Test case: Atomic Habits (reported issue)
+    const title = "Atomic Habits";
+    const author = "James Clear";
 
     console.log(`Querying for: "${title}" by "${author}"`);
 

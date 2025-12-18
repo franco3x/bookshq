@@ -78,6 +78,14 @@ export const api = {
         return response.json();
     },
 
+    fetchBookCover: async (id) => {
+        const response = await fetch(`${API_BASE}/books/${id}/cover/fetch`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error('Failed to fetch cover');
+        return response.json();
+    },
+
     // Authors
     getAuthors: async () => {
         const response = await fetch(`${API_BASE}/authors`);

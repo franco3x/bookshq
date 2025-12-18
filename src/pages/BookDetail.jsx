@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
-import { ArrowLeft, Book as BookIcon, Trophy, Highlighter, Clock, CheckCircle, Star, Hash, Calendar } from 'lucide-react';
+import { ArrowLeft, Book as BookIcon, Trophy, Highlighter, Clock, CheckCircle, Star, Hash, Calendar, RefreshCw } from 'lucide-react';
 
 export default function BookDetail() {
     const { id } = useParams();
@@ -48,6 +48,7 @@ export default function BookDetail() {
 
     const [isEditingDate, setIsEditingDate] = useState(false);
     const [dateInput, setDateInput] = useState('');
+    const [refreshingCover, setRefreshingCover] = useState(false);
 
     const [isEditingAuthors, setIsEditingAuthors] = useState(false);
     const [allAuthors, setAllAuthors] = useState([]);
@@ -158,6 +159,26 @@ export default function BookDetail() {
         }
     };
 
+    const handleRefreshCover = async () => {
+        if (!confirm('This will attempt to find a new cover image for this book. Continue?')) return;
+
+        try {
+            setRefreshingCover(true);
+            const res = await api.fetchBookCover(book.id);
+            if (res.success && res.coverImage) {
+                setBook(prev => ({ ...prev, coverImage: res.coverImage }));
+                alert('Cover updated!');
+            } else {
+                alert('No new cover found.');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Failed to refresh cover: ' + e.message);
+        } finally {
+            setRefreshingCover(false);
+        }
+    };
+
     const handleMarkAsRead = async () => {
         try {
             const res = await fetch(`/api/books/${id}/read`, { method: 'POST' });
@@ -199,12 +220,24 @@ export default function BookDetail() {
             <div className="glass-panel p-8 rounded-2xl relative overflow-hidden">
                 <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-20`} />
                 <div className="relative flex flex-col md:flex-row gap-8">
-                    <div className="w-full md:w-64 aspect-[2/3] rounded-lg shadow-2xl overflow-hidden flex-shrink-0 bg-black/40 flex items-center justify-center">
+                    <div className="w-full md:w-64 aspect-[2/3] rounded-lg shadow-2xl overflow-hidden flex-shrink-0 bg-black/40 flex items-center justify-center relative group">
                         {book.coverImage ? (
                             <img src={book.coverImage} alt={book.title} className="w-full h-full object-cover" />
                         ) : (
                             <BookIcon size={64} className="text-white/40" />
                         )}
+
+                        {/* Refresh Cover Button */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
+                            <button
+                                onClick={handleRefreshCover}
+                                disabled={refreshingCover}
+                                className="flex flex-col items-center gap-2 text-white hover:text-[var(--accent-primary)] transition-colors"
+                            >
+                                <RefreshCw size={24} className={refreshingCover ? "animate-spin" : ""} />
+                                <span className="text-sm font-bold">{refreshingCover ? "Searching..." : "Refresh Cover"}</span>
+                            </button>
+                        </div>
                     </div>
 
                     <div className="flex-1 space-y-4">

@@ -4,9 +4,48 @@ import { eq, sql } from 'drizzle-orm';
 
 // XP Constants
 const XP_PER_HIGHLIGHT = 10;
-const XP_PER_BOOK_READ = 250;
-const XP_PER_BOOK_REREAD = 150;
 const XP_PER_BOOK_IMPORT = 10;
+const BASE_XP = 50;
+const XP_PER_PAGE = 1;
+const DEFAULT_PAGES = 250;
+
+// Genre Defaults (fallback if pageCount is missing)
+const GENRE_PAGE_DEFAULTS = {
+    'comics': 25,
+    'comic': 25,
+    'manga': 25,
+    'graphic novel': 200,
+    'poetry': 100,
+    'sci-fi': 350,
+    'fantasy': 350
+};
+
+// Helper: Calculate XP for a single book
+function calculateBookXP(book) {
+    let pages = book.pageCount;
+
+    // estimates if pages missing
+    if (!pages) {
+        pages = DEFAULT_PAGES;
+        if (book.genre) {
+            const genres = Array.isArray(book.genre) ? book.genre : [book.genre];
+            for (const g of genres) {
+                if (!g) continue;
+                const lower = g.toLowerCase();
+                // Check exact or partial matches in our map
+                // Simple iteration for keyword matching
+                for (const [key, val] of Object.entries(GENRE_PAGE_DEFAULTS)) {
+                    if (lower.includes(key)) {
+                        pages = val;
+                        break; // Take first match
+                    }
+                }
+            }
+        }
+    }
+
+    return BASE_XP + (pages * XP_PER_PAGE);
+}
 
 export async function recalculateStats() {
     console.log('🔄 Starting XP Recalculation (Service)...');
@@ -46,11 +85,16 @@ export async function recalculateStats() {
             const isRead = (book.readCount && book.readCount > 0) || book.readStatus === 'read' || book.dateLastRead;
 
             if (isRead) {
+                // Determine base XP for this book
+                const standardXP = calculateBookXP(book);
+
                 // Ensure effective count is at least 1 if status is read
                 const effectiveCount = Math.max(1, book.readCount || 0);
 
-                // First read = XP_PER_BOOK_READ, others = XP_PER_BOOK_REREAD
-                const readXP = XP_PER_BOOK_READ + (Math.max(0, effectiveCount - 1) * XP_PER_BOOK_REREAD);
+                // First read = standardXP, others = 50% of standardXP
+                const rereadXP = Math.floor(standardXP * 0.5);
+                const readXP = standardXP + (Math.max(0, effectiveCount - 1) * rereadXP);
+
                 bookXP += readXP;
             }
 
