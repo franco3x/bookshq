@@ -35,6 +35,26 @@ export const api = {
         return response.json();
     },
 
+    mergeBooks: async (targetId, sourceId) => {
+        const response = await fetch(`${API_BASE}/merge/books`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetId, sourceId }),
+        });
+        if (!response.ok) throw new Error('Merge failed');
+        return response.json();
+    },
+
+    mergeAuthors: async (targetId, sourceId) => {
+        const response = await fetch(`${API_BASE}/merge/authors`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ targetId, sourceId }),
+        });
+        if (!response.ok) throw new Error('Merge failed');
+        return response.json();
+    },
+
     // Books
     getBooks: async () => {
         const response = await fetch(`${API_BASE}/books`);

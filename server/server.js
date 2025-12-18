@@ -19,6 +19,7 @@ import { parseMyClippings } from './services/parser.js';
 import { parseReadwiseCSV } from './services/readwise-parser.js';
 import { saveHighlights } from './services/db-service.js';
 import { importGoodreadsCSV } from './services/goodreads-import.js';
+import { mergeBooks, mergeAuthors } from './services/merge-service.js';
 
 app.use(cors());
 app.use(express.json());
@@ -100,6 +101,37 @@ app.get('/api/books', async (req, res) => {
         res.json(formatted);
     } catch (e) {
         console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Merge Endpoints
+app.post('/api/merge/books', async (req, res) => {
+    const { targetId, sourceId } = req.body;
+    if (!targetId || !sourceId) {
+        return res.status(400).json({ error: 'Target ID and Source ID are required' });
+    }
+
+    try {
+        const result = await mergeBooks(parseInt(targetId), parseInt(sourceId));
+        res.json(result);
+    } catch (e) {
+        console.error('Book merge error:', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.post('/api/merge/authors', async (req, res) => {
+    const { targetId, sourceId } = req.body;
+    if (!targetId || !sourceId) {
+        return res.status(400).json({ error: 'Target ID and Source ID are required' });
+    }
+
+    try {
+        const result = await mergeAuthors(parseInt(targetId), parseInt(sourceId));
+        res.json(result);
+    } catch (e) {
+        console.error('Author merge error:', e);
         res.status(500).json({ error: e.message });
     }
 });

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Download, FileText, Book as BookIcon } from 'lucide-react';
+import { Download, FileText, Book as BookIcon, GitMerge } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Settings() {
     const [exporting, setExporting] = useState(false);
@@ -76,6 +77,25 @@ export default function Settings() {
                     <Download size={20} className="rotate-180" /> {/* Upload/Cloud icon substitute */}
                     Fetch Covers & Genres
                 </button>
+            </div>
+
+            {/* Maintenance */}
+            <div className="glass-panel p-8 rounded-2xl">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <GitMerge className="text-red-500" />
+                    Maintenance
+                </h2>
+                <p className="text-[var(--text-secondary)] mb-6">
+                    Merge duplicate books or authors into a single profile. This will consolidate highlights, ratings, and stats while deleting the duplicate entry.
+                </p>
+
+                <Link
+                    to="/settings/merge"
+                    className="px-6 py-3 bg-[var(--bg-tertiary)] hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 text-[var(--text-primary)] rounded-xl font-medium flex items-center gap-3 transition-all border border-[var(--glass-border)] inline-flex"
+                >
+                    <GitMerge size={20} />
+                    Open Consolidation Portal
+                </Link>
             </div>
 
             <div className="text-center text-xs text-[var(--text-muted)] mt-12">
