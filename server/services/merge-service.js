@@ -101,6 +101,12 @@ export async function mergeAuthors(targetId, sourceId) {
 
         if (!target || !source) throw new Error("One or both authors not found.");
 
+        // 0. Update Legacy Book References
+        // The 'books' table has an 'authorId' column (FK) that needs to be moved.
+        await tx.update(books)
+            .set({ authorId: targetId })
+            .where(eq(books.authorId, sourceId));
+
         // 1. Reassign Books (Handle duplicates first!)
         // Find overlaps: Books where BOTH authors are currently assigned
         const sourceBooks = await tx.query.bookAuthors.findMany({
