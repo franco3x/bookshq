@@ -10,7 +10,8 @@ import {
     Search,
     Upload,
     Plus,
-    Layers
+    Layers,
+    PieChart
 } from 'lucide-react';
 import clsx from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -41,6 +42,7 @@ export default function Layout() {
         { icon: Users, label: 'Authors', path: '/authors' },
         { icon: Highlighter, label: 'Highlights', path: '/highlights' },
         { icon: BarChart2, label: 'Stats', path: '/stats' },
+        { icon: PieChart, label: 'Analytics', path: '/analytics' },
         { icon: Layers, label: 'Dimensions', path: '/stats/categories' },
         { icon: Settings, label: 'Settings', path: '/settings' },
     ];

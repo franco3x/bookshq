@@ -14,6 +14,7 @@ import AuthorRankings from './pages/AuthorRankings';
 import Settings from './pages/Settings';
 import ImportGoodreads from './pages/ImportGoodreads';
 import MergePortal from './pages/MergePortal';
+import Analytics from './pages/Analytics';
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
         <Route path="highlights" element={<Highlights />} />
         <Route path="highlights" element={<Highlights />} />
         <Route path="stats" element={<Stats />} />
+        <Route path="analytics" element={<Analytics />} />
         <Route path="stats/categories" element={<CategoryLevels />} />
         <Route path="stats/authors" element={<AuthorRankings />} />
         <Route path="settings" element={<Settings />} />
