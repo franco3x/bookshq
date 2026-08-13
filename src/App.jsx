@@ -26,7 +26,6 @@ function App() {
         <Route path="authors" element={<Authors />} />
         <Route path="authors/:id" element={<AuthorDetail />} />
         <Route path="highlights" element={<Highlights />} />
-        <Route path="highlights" element={<Highlights />} />
         <Route path="stats" element={<Stats />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="stats/categories" element={<CategoryLevels />} />

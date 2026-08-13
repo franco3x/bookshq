@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import AuthorCard from '../components/AuthorCard';
 import { Users, Search, LayoutGrid, List as ListIcon, BookOpen, Highlighter, RefreshCw } from 'lucide-react';
