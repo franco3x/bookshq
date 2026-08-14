@@ -390,6 +390,7 @@ router.post('/:id/cover/fetch', async (req, res) => {
             res.status(404).json({ error: 'No details found' });
         }
     } catch (e) {
+        console.error('[cover/fetch] Error:', e);
         res.status(500).json({ error: e.message });
     }
 });
