@@ -18,6 +18,15 @@ export const api = {
         return response.json();
     },
 
+    importFromKindleDevice: async () => {
+        const response = await fetch(`${API_BASE}/import/kindle-device`, { method: 'POST' });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || 'Import failed');
+        }
+        return data;
+    },
+
     // Upload Goodreads Export
     importGoodreadsCSV: async (file) => {
         const formData = new FormData();

@@ -1,6 +1,6 @@
 # BooksHQ — Project Tracker
 
-_Last updated: 2026-08-14 (wrote Quote Card Copy + Share spec)_
+_Last updated: 2026-09-27 (built Kindle Sync bookmarklet + plugged-in Kindle import)_
 
 This is a living doc so future sessions (with me or with Claude Code) don't have to reconstruct project state from scratch. Update it whenever a work session wraps up with something meaningfully done or discovered.
 
@@ -25,7 +25,9 @@ This is a living doc so future sessions (with me or with Claude Code) don't have
 
 ## Feature inventory (what's built and working)
 
-- **Imports:** Goodreads library CSV import; Readwise highlights CSV import/parsing
+- **Imports:** Goodreads library CSV import; Readwise highlights CSV import/parsing; Kindle `My Clippings.txt` upload
+- **Kindle Sync (Readwise replacement):** Import modal → "Kindle Sync" tab. (1) A "Send to BooksHQ" bookmarklet the user drags to the bookmarks bar and clicks on `read.amazon.com/notebook`; it scrolls the library, fetches every book's annotation pages (following `token`/`contentLimitState` pagination), and POSTs `{ books: [{ asin, title, author, highlights: [{ text, location, note, color }] }] }` as `text/plain` (no CORS preflight) to `POST /api/import/kindle-notebook`. Add `?dryRun=1` for a no-write preview (lists new books/authors). (2) "Import from plugged-in Kindle" → `POST /api/import/kindle-device`, reads `/Volumes/*/documents/My Clippings.txt` (catches sideloaded books that never reach the notebook). First real sync 2026-09-27: 282 notebook books, 7,814 highlights → 7 new books, 336 new highlights, 12 updated; a second pass adds nothing.
+- **Book matching in `saveHighlights`** (`server/services/db-service.js`, shared by all highlight imports): ASIN first → exact `title|authorId` → fuzzy (normalized/loose/word-prefix title **plus** at least one shared author surname, using legacy author + `book_authors`). Needed because Amazon lists all co-authors ("Gary Keller and Jay Papasan") and spells names differently than the Readwise/Goodreads imports; without it the first sync would have duplicated ~55 existing books. Title-matched books get their Kindle ASIN saved. Notebook imports also pass `updateByLocation`, so a highlight widened on the Kindle updates in place instead of duplicating.
 - **Books/Authors core:** list, detail, edit pages for both; multi-author and multi-genre support (JSONB arrays + junction table)
 - **Author enrichment:** demographic data (gender, race, nationality, vocation, birth/death year, bio) via Wikidata, with title-case normalization
 - **Gamification:** XP and leveling at three levels — global reader level, per-author level, per-category level (genre/gender/race/nationality) — plus a full achievement system (static + dynamically generated achievements, e.g. per-genre/nationality/vocation)
@@ -48,6 +50,10 @@ This is a living doc so future sessions (with me or with Claude Code) don't have
 
 ## Known issues / cleanup candidates
 
+- **Likely bug in `server/services/gamification.js` (~lines 68, 85-86):** `genre`, `race`, `nationality` are jsonb *arrays* but are used as single object keys when awarding category XP on highlight import. Found 2026-09-27, not yet fixed. "Recalculate stats" (`recalculateStats()` in `server/services/stats.js`) rebuilds XP from scratch and is the reliable number.
+- **Merge candidate:** "The Millionaire Next Door (Millionaire Set Book 2)" (book 3642, 8 highlights, credited to William D. Danko only) is a second Kindle edition of book 2343 (credited to Thomas J. Stanley). No shared surname, so the sync couldn't match it. Merge via the Merge Portal.
+- **Books whose `asin` column holds a print ISBN** (e.g. `9780393254600`, from the Goodreads import) never match Kindle ASINs (`B0…`); they rely on fuzzy title+surname matching every sync. Works fine, just not exact.
+
 - **Cleanup:** `server/scripts/profile-authors.js` is a leftover benchmark script used while optimizing `/api/authors` (commit `6893191`). Safe to delete now that the optimization has shipped, unless you want to keep it around for future query profiling.
 - Stray local files seen in a recent working copy (`debug_absolute.log`, `debug_final.log`) aren't tracked in git — fine to `.gitignore` or delete if they reappear.
 
@@ -58,7 +64,7 @@ This is a living doc so future sessions (with me or with Claude Code) don't have
 ## Reviewed, no action needed
 
 - **Personal data (readwise-data.csv, Goodreads export CSV) is tracked in git and the repo is public.** Reviewed 2026-08-13 — decided this is not a concern (contents are just book titles and quotes, nothing sensitive). Repo stays public, no history rewrite planned. Revisit only if that judgment changes later.
-- **Direct Kindle highlight import (skip My Clippings.txt).** Discussed 2026-08-13. There is no official Amazon API for Kindle highlights — the only paths are scraping Amazon's `read.amazon.com/notebook` page (what Readwise's own auto-sync does under the hood), either manually per-book (e.g. the Bookcision bookmarklet: https://readwise.io/bookcision) or via a scripted bulk scraper (e.g. https://github.com/parroty/kindle-your-highlights, https://github.com/ryangreenberg/kindle-exporter). All options are unofficial, fragile to Amazon markup changes, and sit in a gray area re: ToS for automation. Decided not worth pursuing right now — sticking with the manual Clippings.txt import. Revisit if the manual step becomes enough of an annoyance to justify the fragility, or if Amazon ever ships an official export/API.
+- **Direct Kindle highlight import — decision reversed 2026-09-27, now built (see Kindle Sync in Feature inventory).** On 2026-08-13 this was judged not worth it while Readwise was still in use. The goal of BooksHQ is to cancel Readwise, and Kindle-*app* highlights exist only on `read.amazon.com/notebook` (no Clippings file), so scraping that page is the only automatic path. Compared a Playwright robot browser (hands-off but its own Amazon login that expires, captcha risk), a browser extension (what Readwise does), and a bookmarklet. Chose the **bookmarklet**: runs in the user's own logged-in tab, no stored credentials, tiny, one click per sync. Still unofficial, breaks if Amazon changes the notebook markup, and is a ToS gray area; all Amazon-specific selectors are isolated in the `SEL` block at the top of `src/bookmarklet/kindle-notebook.js`. Tested 2026-09-27: Amazon's CSP allows both running the bookmarklet and POSTing to localhost (ports 3001 and 5005).
 
 ## Recently fixed
 

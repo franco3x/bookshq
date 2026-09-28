@@ -1,13 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
-import { ArrowLeft, Book as BookIcon, Trophy, Highlighter, Clock, CheckCircle, Star, Hash, Calendar, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Book as BookIcon, Trophy, Highlighter, Clock, CheckCircle, Star, Hash, Calendar, RefreshCw, Check } from 'lucide-react';
 
 export default function BookDetail() {
     const { id } = useParams();
     const { hash } = useLocation();
     const [book, setBook] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [copiedId, setCopiedId] = useState(null);
+
+    const handleCopy = async (highlight) => {
+        console.log('DEBUG handleCopy called', highlight.id);
+        const authorNames = book.authors?.map(a => a.name).join(', ') || 'Unknown Author';
+        const text = `"${highlight.text}"\n\n— ${book.title}, ${authorNames}`;
+        await navigator.clipboard.writeText(text);
+        console.log('DEBUG about to setCopiedId', highlight.id);
+        setCopiedId(highlight.id);
+        console.log('DEBUG setCopiedId called');
+        setTimeout(() => setCopiedId(null), 2000);
+    };
 
     useEffect(() => {
         loadBook();
@@ -617,7 +629,16 @@ export default function BookDetail() {
                                 <span>Location: {highlight.location}</span>
                                 <div className="flex gap-2">
                                     <button className="hover:text-[var(--text-primary)] transition-colors">Share</button>
-                                    <button className="hover:text-[var(--text-primary)] transition-colors">Copy</button>
+                                    <button
+                                        onClick={() => handleCopy(highlight)}
+                                        className="hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
+                                    >
+                                        {copiedId === highlight.id ? (
+                                            <><Check size={14} className="text-green-500" /> Copied!</>
+                                        ) : (
+                                            'Copy'
+                                        )}
+                                    </button>
                                 </div>
                             </div>
                         </div>

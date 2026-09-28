@@ -1,5 +1,5 @@
 import { db } from '../database/db';
-import { authors, books, highlights } from '../database/schema';
+import { authors, books, highlights, bookAuthors } from '../database/schema';
 import { eq, and, inArray, sql } from 'drizzle-orm';
 
 export async function findOrCreateAuthor(name) {
@@ -36,7 +36,54 @@ export async function findOrCreateBook(title, authorId) {
     return newBook;
 }
 
-export async function saveHighlights(parsedClippings) {
+// "ReWork!" -> "rework"
+function normalizeTitle(title) {
+    return title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+
+// "The Science of Getting Rich [Illustrated]: A Guide (Kindle Edition)" -> "the science of getting rich"
+function looseTitle(title) {
+    return normalizeTitle(title.replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').split(':')[0]);
+}
+
+// "the intelligent investor" vs "the intelligent investor rev ed"
+function isWordPrefix(short, long) {
+    return short.split(' ').length >= 2 && long.startsWith(short + ' ');
+}
+
+const NAME_SUFFIXES = new Set(['jr', 'sr', 'ii', 'iii', 'iv', 'phd', 'md']);
+
+// "Gary Keller, Dave Jenks, and Jay Papasan" -> {"keller", "jenks", "papasan"}
+function authorSurnames(names) {
+    const surnames = new Set();
+    for (const name of names.split(/,|&|;|\band\b/i)) {
+        const words = name.replace(/\([^)]*\)/g, ' ').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, '')
+            .split(/\s+/).filter(w => w && !NAME_SUFFIXES.has(w));
+        if (words.length) surnames.add(words[words.length - 1]);
+    }
+    return surnames;
+}
+
+// "123-456", "1,234", "Location: 1234" -> "123" / "1234"
+function startLocation(location) {
+    const match = String(location ?? '').replace(/,/g, '').match(/\d+/);
+    return match ? match[0] : null;
+}
+
+async function fetchExistingHighlights(bookIds) {
+    const existing = [];
+    const BOOK_CHUNK_SIZE = 100;
+    for (let i = 0; i < bookIds.length; i += BOOK_CHUNK_SIZE) {
+        const bookChunk = bookIds.slice(i, i + BOOK_CHUNK_SIZE);
+        existing.push(...await db
+            .select({ id: highlights.id, text: highlights.text, bookId: highlights.bookId, location: highlights.location })
+            .from(highlights)
+            .where(inArray(highlights.bookId, bookChunk)));
+    }
+    return existing;
+}
+
+export async function saveHighlights(parsedClippings, { updateByLocation = false, dryRun = false } = {}) {
     let createdCount = 0;
     let skippedCount = 0;
 
@@ -48,36 +95,90 @@ export async function saveHighlights(parsedClippings) {
     const authorMap = new Map(allAuthors.map(a => [a.name, a.id]));
     // Map: "Title|AuthorId" -> ID
     const bookMap = new Map(allBooks.map(b => [`${b.title}|${b.authorId}`, b.id]));
+    const booksById = new Map(allBooks.map(b => [b.id, b]));
+    const asinMap = new Map(allBooks.filter(b => b.asin).map(b => [b.asin, b.id]));
+
+    // Sources spell authors differently ("Gary Keller" vs "Gary Keller and Jay Papasan", "Michael   Lewis"),
+    // so fuzzy matching needs a similar title plus at least one shared author surname.
+    const authorNameById = new Map(allAuthors.map(a => [a.id, a.name]));
+    const bookSurnames = new Map(allBooks.map(b => [b.id, authorSurnames(authorNameById.get(b.authorId) || '')]));
+    for (const link of await db.select().from(bookAuthors)) {
+        for (const s of authorSurnames(authorNameById.get(link.authorId) || '')) bookSurnames.get(link.bookId)?.add(s);
+    }
+    const titleIndex = allBooks.map(b => ({ id: b.id, full: normalizeTitle(b.title), loose: looseTitle(b.title), surnames: bookSurnames.get(b.id) }));
+
+    const fuzzyCache = new Map();
+    const fuzzyMatch = (clipping) => {
+        const cacheKey = `${clipping.title}|${clipping.author}`;
+        if (fuzzyCache.has(cacheKey)) return fuzzyCache.get(cacheKey);
+
+        const full = normalizeTitle(clipping.title);
+        const loose = looseTitle(clipping.title);
+        const surnames = [...authorSurnames(clipping.author)];
+        const sameAuthor = titleIndex.filter(b => surnames.some(s => b.surnames.has(s)));
+        // Several same-title matches are existing duplicates, so take the oldest; several prefix matches are different books.
+        const oldest = (list) => list.length ? Math.min(...list.map(b => b.id)) : undefined;
+        const only = (list) => list.length === 1 ? list[0].id : undefined;
+
+        const bookId = oldest(sameAuthor.filter(b => b.full === full))
+            ?? (loose ? oldest(sameAuthor.filter(b => b.loose === loose)) : undefined)
+            ?? (loose ? only(sameAuthor.filter(b => isWordPrefix(b.loose, loose) || isWordPrefix(loose, b.loose))) : undefined);
+        fuzzyCache.set(cacheKey, bookId);
+        return bookId;
+    };
+
+    // Existing books first matched by title that should now remember their ASIN: bookId -> asin
+    const asinUpdates = new Map();
+
+    const resolveBook = (clipping) => {
+        if (clipping.asin && asinMap.has(clipping.asin)) return asinMap.get(clipping.asin);
+
+        const authorId = authorMap.get(clipping.author.trim());
+        const bookId = (authorId ? bookMap.get(`${clipping.title}|${authorId}`) : undefined) ?? fuzzyMatch(clipping);
+
+        if (bookId && clipping.asin && !booksById.get(bookId)?.asin && !asinUpdates.has(bookId)) {
+            asinUpdates.set(bookId, clipping.asin);
+            asinMap.set(clipping.asin, bookId);
+        }
+        return bookId;
+    };
 
     // 2. Identification Sets
     const authorsToInsert = new Map(); // Name -> { name }
-    const booksToInsert = new Map();   // "Title|AuthorName" -> { title, authorName }
+    const booksToInsert = new Map();   // "Title|AuthorName" -> { title, authorName, asin }
     const clippingsToProcess = [];
 
     // 3. First Pass: Identify missing Authors & Books
     for (const clipping of parsedClippings) {
         if (clipping.type !== 'highlight') continue;
+        clippingsToProcess.push(clipping);
 
-        const authorName = clipping.author.trim();
-        if (!authorMap.has(authorName)) {
-            authorsToInsert.set(authorName, { name: authorName });
-        }
-
-        // We can't key by AuthorID yet because we might not have it.
-        // Key by Title + AuthorName temporarily
-        const bookKey = `${clipping.title}|${authorName}`;
-        // We also need to check if we already have it in DB (but authorID check is tricky if author is new)
-        // For simplicity: If author is new, book is definitely new. 
-        // If author exists, check bookMap.
-        const authorId = authorMap.get(authorName);
-        if (!authorId || !bookMap.has(`${clipping.title}|${authorId}`)) {
-            // Avoid duplicates in batch
+        if (!resolveBook(clipping)) {
+            const authorName = clipping.author.trim();
+            if (!authorMap.has(authorName)) {
+                authorsToInsert.set(authorName, { name: authorName });
+            }
+            const bookKey = `${clipping.title}|${authorName}`;
             if (!booksToInsert.has(bookKey)) {
-                booksToInsert.set(bookKey, { title: clipping.title, authorName: authorName });
+                booksToInsert.set(bookKey, { title: clipping.title, authorName, asin: clipping.asin || null });
             }
         }
+    }
 
-        clippingsToProcess.push(clipping);
+    // Preview what an import would do, without writing anything.
+    if (dryRun) {
+        const resolvedIds = clippingsToProcess.map(c => resolveBook(c));
+        const existing = await fetchExistingHighlights([...new Set(resolvedIds.filter(Boolean))]);
+        const existingSet = new Set(existing.map(h => `${h.bookId}|${h.text}`));
+        const alreadyHave = clippingsToProcess.filter((c, i) => resolvedIds[i] && existingSet.has(`${resolvedIds[i]}|${c.text}`)).length;
+        return {
+            dryRun: true,
+            newAuthors: [...authorsToInsert.keys()],
+            newBooks: [...booksToInsert.values()].map(({ title, authorName, asin }) => ({ title, author: authorName, asin })),
+            existingBooksGainingAsin: asinUpdates.size,
+            highlightsAlreadyInLibrary: alreadyHave,
+            highlightsNewOrChanged: clippingsToProcess.length - alreadyHave,
+        };
     }
 
     // 4. Batch Insert New Authors
@@ -96,145 +197,108 @@ export async function saveHighlights(parsedClippings) {
 
         // Re-fetch in case onConflictDoNothing skipped some (race condition edge case)
         if (newAuthors.length !== authorsToInsert.size) {
-            console.log('Refetching all authors to ensure map is complete...');
             const reFetch = await db.select().from(authors);
             reFetch.forEach(a => authorMap.set(a.name, a.id));
-            console.log(`Author map size after refetch: ${authorMap.size}`);
         }
     }
 
     // 5. Batch Insert New Books
-    // Now we have IDs for all authors
     const bookValues = [];
-    for (const [key, val] of booksToInsert) {
+    for (const val of booksToInsert.values()) {
         const authorId = authorMap.get(val.authorName);
         if (authorId) {
-            bookValues.push({ title: val.title, authorId });
-        } else {
-            // DEBUG: why missing?
-            if (bookValues.length < 5) console.log(`Missing author ID for book insert: ${val.authorName}`);
+            bookValues.push({ title: val.title, authorId, asin: val.asin });
         }
     }
 
     if (bookValues.length > 0) {
-        console.log(`Inserting/Fetching ${bookValues.length} potential books...`);
-        const newBooks = await db.insert(books)
-            .values(bookValues)
-            .onConflictDoNothing()
-            .returning();
-
-        console.log(`Inserted ${newBooks.length} new books.`);
-
+        console.log(`Inserting ${bookValues.length} new books...`);
+        const newBooks = await db.insert(books).values(bookValues).returning();
         for (const b of newBooks) {
             bookMap.set(`${b.title}|${b.authorId}`, b.id);
-        }
-        // Re-fetch safety
-        if (newBooks.length !== bookValues.length) {
-            console.log('Refetching all books to ensure map is complete...');
-            const reFetchBooks = await db.select().from(books);
-            reFetchBooks.forEach(b => bookMap.set(`${b.title}|${b.authorId}`, b.id));
-            console.log(`Book map size after refetch: ${bookMap.size}`);
+            booksById.set(b.id, b);
+            if (b.asin) asinMap.set(b.asin, b.id);
         }
     }
 
-    // 6. Filter Highlights (Batch Duplicate Check)
-    // Fetch all existing highlights? Too big. 
-    // Optimization: Construct a giant "WHERE (text = ? AND book_id = ?) OR ..." query is cleaner but max query size limits.
-    // Better: We optimistically insert with ON CONFLICT DO NOTHING if we had a constraint.
-    // Drizzle schema doesn't strictly enforce unique text+bookId yet in the arrays I saw, but let's assume we want to avoid it.
-    // For V1 Speed: Let's do a bulk insert with `onConflictDoNothing` if we add a unique index, or just insert them all if checks are hard.
-    // But duplicate highlights are annoying.
-
-    // Let's create a "Signature" set of what we are trying to insert
-    const highlightsToInsert = [];
-
-    // We really should query existing highlights for the books involved. 
-    // Collect all involved Book IDs
+    // 6. Resolve every clipping to a book
     const involvedBookIds = new Set();
     const finalClippings = []; // { ...clipping, bookId, authorId }
 
-    let debugMisses = 0;
     for (const clipping of clippingsToProcess) {
-        const authorId = authorMap.get(clipping.author.trim());
+        const authorIdFromName = authorMap.get(clipping.author.trim());
+        const bookId = resolveBook(clipping);
+        if (!bookId) continue;
 
-        // Ensure we try to find the book even if authorId comes from map (it should)
-        let bookId;
-        if (authorId) {
-            bookId = bookMap.get(`${clipping.title}|${authorId}`);
-        }
+        const authorId = booksById.get(bookId)?.authorId ?? authorIdFromName;
+        involvedBookIds.add(bookId);
+        finalClippings.push({ ...clipping, authorId, bookId });
+    }
 
-        if (authorId && bookId) {
-            involvedBookIds.add(bookId);
-            finalClippings.push({ ...clipping, authorId, bookId });
-        } else {
-            if (debugMisses < 5) {
-                console.log(`Failed to resolve for clipping: "${clipping.title}" by "${clipping.author}"`);
-                console.log(`- Author found? ${!!authorId} (ID: ${authorId})`);
-                console.log(`- Book lookup key: "${clipping.title}|${authorId}"`);
-                console.log(`- Book found? ${!!bookId}`);
-                if (!bookId && authorId) {
-                    // Check if book map has ANY entry for this author
-                    // This is expensive logging, careful
-                }
-                debugMisses++;
-            }
+    if (finalClippings.length < clippingsToProcess.length) {
+        console.log(`Could not resolve a book for ${clippingsToProcess.length - finalClippings.length} / ${clippingsToProcess.length} clippings`);
+    }
+
+    if (asinUpdates.size > 0) {
+        console.log(`Saving ASINs on ${asinUpdates.size} existing books...`);
+        for (const [bookId, asin] of asinUpdates) {
+            await db.update(books).set({ asin }).where(eq(books.id, bookId));
         }
     }
 
-    if (debugMisses > 0) {
-        console.log(`Total clippings failed to resolve: ${clippingsToProcess.length - finalClippings.length} / ${clippingsToProcess.length}`);
-    }
-
-    // Fetch existing highlights for these books only (Optimization)
-    // Only query highlights for the specific books we're importing
+    // 7. Duplicate check against existing highlights for the involved books only
     console.log(`Checking for duplicates across ${involvedBookIds.size} books...`);
 
-    let existingHighlights = [];
-    if (involvedBookIds.size > 0) {
-        const bookIdsArray = Array.from(involvedBookIds);
-        // For very large imports, chunk the WHERE IN query
-        const BOOK_CHUNK_SIZE = 100;
-        for (let i = 0; i < bookIdsArray.length; i += BOOK_CHUNK_SIZE) {
-            const bookChunk = bookIdsArray.slice(i, i + BOOK_CHUNK_SIZE);
-            const chunkHighlights = await db
-                .select({ text: highlights.text, bookId: highlights.bookId })
-                .from(highlights)
-                .where(inArray(highlights.bookId, bookChunk));
-            existingHighlights.push(...chunkHighlights);
+    const existingHighlights = await fetchExistingHighlights(Array.from(involvedBookIds));
 
-            if (i % 300 === 0 && i > 0) {
-                console.log(`Checked ${i}/${bookIdsArray.length} books for duplicates...`);
-            }
-        }
-    }
-
-    // Memory Set of existing "BookID|TextHash"
     const existingSet = new Set(existingHighlights.map(h => `${h.bookId}|${h.text}`));
     console.log(`Found ${existingHighlights.length} existing highlights to check against`);
 
-    for (const c of finalClippings) {
-        if (!existingSet.has(`${c.bookId}|${c.text}`)) {
-            highlightsToInsert.push({
-                text: c.text,
-                bookId: c.bookId,
-                authorId: c.authorId,
-                location: c.location,
-                originalDate: c.date,
-                createdAt: new Date()
-            });
-            // Add to set to prevent duplicates within the upload file itself
-            existingSet.add(`${c.bookId}|${c.text}`);
-        } else {
-            skippedCount++;
-        }
-
-        // Progress logging for large imports
-        if ((highlightsToInsert.length + skippedCount) % 1000 === 0) {
-            console.log(`Processed ${highlightsToInsert.length + skippedCount}/${finalClippings.length} highlights...`);
+    const byLocation = new Map(); // "BookID|StartLocation" -> existing highlight
+    if (updateByLocation) {
+        for (const h of existingHighlights) {
+            const loc = startLocation(h.location);
+            if (loc) byLocation.set(`${h.bookId}|${loc}`, h);
         }
     }
 
-    // 7. Bulk Insert Highlights (Chunked)
+    const highlightsToInsert = [];
+    const highlightUpdates = [];
+
+    for (const c of finalClippings) {
+        const textKey = `${c.bookId}|${c.text}`;
+        if (existingSet.has(textKey)) {
+            skippedCount++;
+            continue;
+        }
+        existingSet.add(textKey);
+
+        // A highlight widened or trimmed on the Kindle keeps its start location, so replace
+        // the stored text instead of adding a near-duplicate.
+        const loc = updateByLocation ? startLocation(c.location) : null;
+        const sameSpot = loc ? byLocation.get(`${c.bookId}|${loc}`) : null;
+        if (sameSpot && (c.text.includes(sameSpot.text) || sameSpot.text.includes(c.text))) {
+            highlightUpdates.push({ id: sameSpot.id, text: c.text, location: c.location });
+            sameSpot.text = c.text;
+            continue;
+        }
+
+        highlightsToInsert.push({
+            text: c.text,
+            bookId: c.bookId,
+            authorId: c.authorId,
+            location: c.location,
+            originalDate: c.date,
+            createdAt: new Date()
+        });
+    }
+
+    for (const u of highlightUpdates) {
+        await db.update(highlights).set({ text: u.text, location: u.location }).where(eq(highlights.id, u.id));
+    }
+    const updatedCount = highlightUpdates.length;
+
+    // 8. Bulk Insert Highlights (Chunked)
     const CHUNK_SIZE = 1000;
     for (let i = 0; i < highlightsToInsert.length; i += CHUNK_SIZE) {
         const chunk = highlightsToInsert.slice(i, i + CHUNK_SIZE);
@@ -282,5 +346,5 @@ export async function saveHighlights(parsedClippings) {
         await onHighlightAddedWithContext(highlightsContext);
     }
 
-    return { createdCount, skippedCount };
+    return { createdCount, updatedCount, skippedCount };
 }

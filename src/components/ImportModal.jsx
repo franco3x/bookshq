@@ -1,14 +1,20 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, Check, AlertCircle, FileText, Loader } from 'lucide-react';
+import { Upload, X, Check, AlertCircle, FileText, Loader, Bookmark, Usb } from 'lucide-react';
 import { api } from '../utils/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import bookmarkletSource from '../bookmarklet/kindle-notebook.js?raw';
+
+const buildBookmarkletHref = () => 'javascript:' + encodeURIComponent(
+    bookmarkletSource.replace('__BOOKSHQ_URL__', window.location.origin).replace('__MODE__', 'sync')
+);
 
 export default function ImportModal({ isOpen, onClose, onSuccess }) {
     const [dragActive, setDragActive] = useState(false);
     const [status, setStatus] = useState('idle'); // idle, uploading, processing, success, error
     const [result, setResult] = useState(null);
     const [errorMsg, setErrorMsg] = useState('');
-    const [importType, setImportType] = useState('kindle'); // 'kindle' or 'readwise'
+    const [importType, setImportType] = useState('kindle'); // 'kindle', 'readwise' or 'kindle-sync'
+    const [dragHint, setDragHint] = useState(false);
 
     // Progress simulation
     const [progress, setProgress] = useState(0);
@@ -83,6 +89,21 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
         }
     };
 
+    const importFromDevice = async () => {
+        setStatus('processing');
+        setProgress(50);
+        try {
+            const data = await api.importFromKindleDevice();
+            setProgress(100);
+            setStatus('success');
+            setResult(data);
+            if (onSuccess) onSuccess(data);
+        } catch (error) {
+            setStatus('error');
+            setErrorMsg(error.message || 'Import failed');
+        }
+    };
+
     const reset = () => {
         setStatus('idle');
         setResult(null);
@@ -127,6 +148,15 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
                             >
                                 Readwise (.csv)
                             </button>
+                            <button
+                                onClick={() => setImportType('kindle-sync')}
+                                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${importType === 'kindle-sync'
+                                        ? 'bg-[var(--accent-primary)] text-black shadow-sm'
+                                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                    }`}
+                            >
+                                Kindle Sync
+                            </button>
                         </div>
                     </div>
                 )}
@@ -134,7 +164,47 @@ export default function ImportModal({ isOpen, onClose, onSuccess }) {
                 {/* Content */}
                 <div className="p-8">
                     <AnimatePresence mode="wait">
-                        {status === 'idle' && (
+                        {status === 'idle' && importType === 'kindle-sync' && (
+                            <motion.div key="kindle-sync" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
+                                <div>
+                                    <h3 className="font-bold mb-3">Sync from your Kindle notebook</h3>
+                                    <ol className="list-decimal list-inside space-y-3 text-sm text-[var(--text-secondary)]">
+                                        <li>
+                                            Drag this button to your bookmarks bar (one time only):
+                                            <div className="mt-2">
+                                                <a
+                                                    ref={el => el?.setAttribute('href', buildBookmarkletHref())}
+                                                    onClick={(e) => { e.preventDefault(); setDragHint(true); }}
+                                                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent-primary)] text-black font-medium cursor-grab"
+                                                >
+                                                    <Bookmark size={16} /> Send to BooksHQ
+                                                </a>
+                                            </div>
+                                            {dragHint && (
+                                                <p className="mt-2 text-xs text-[var(--accent-primary)]">Drag it onto your bookmarks bar rather than clicking it here. It only works on your Kindle notebook page.</p>
+                                            )}
+                                        </li>
+                                        <li>
+                                            Open <a href="https://read.amazon.com/notebook" target="_blank" rel="noreferrer" className="underline hover:text-[var(--text-primary)]">read.amazon.com/notebook</a> and sign in.
+                                        </li>
+                                        <li>Click the bookmark. It reads every book's highlights and sends new ones here.</li>
+                                    </ol>
+                                    <p className="mt-3 text-xs text-[var(--text-muted)]">Keep BooksHQ running while it syncs. Highlights you already have are skipped.</p>
+                                </div>
+                                <div className="border-t border-[var(--glass-border)] pt-5">
+                                    <h3 className="font-bold mb-1">Physical Kindle plugged in?</h3>
+                                    <p className="text-sm text-[var(--text-secondary)] mb-3">Imports My Clippings.txt directly. This also catches books you didn't buy from Amazon, which never reach the notebook.</p>
+                                    <button
+                                        onClick={importFromDevice}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[var(--glass-border)] hover:bg-[var(--bg-tertiary)] text-sm"
+                                    >
+                                        <Usb size={16} /> Import from plugged-in Kindle
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {status === 'idle' && importType !== 'kindle-sync' && (
                             <motion.div
                                 key="idle"
                                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}

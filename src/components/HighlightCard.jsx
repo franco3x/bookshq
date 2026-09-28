@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Share2, BookOpen, Loader } from 'lucide-react';
+import { Share2, BookOpen, Loader, Copy, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 
 export default function HighlightCard({ highlight, showBookInfo = true }) {
     const [sharing, setSharing] = useState(false);
+    const [copied, setCopied] = useState(false);
 
     const handleShare = async (e) => {
         e.preventDefault(); // Prevent link navigation
@@ -41,6 +42,16 @@ export default function HighlightCard({ highlight, showBookInfo = true }) {
         }
     };
 
+    const handleCopy = async (e) => {
+        e.preventDefault(); // Prevent link navigation
+        e.stopPropagation();
+        const authorName = highlight.author?.name || highlight.book?.author?.name || 'Unknown Author';
+        const text = `"${highlight.text}"\n\n— ${highlight.book?.title}, ${authorName}`;
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
     if (!highlight) return null;
 
     const Wrapper = ({ children }) => {
@@ -58,7 +69,14 @@ export default function HighlightCard({ highlight, showBookInfo = true }) {
     return (
         <div className="glass-panel p-6 rounded-xl relative group transition-all hover:scale-[1.01] hover:border-[var(--accent-primary)] cursor-pointer">
             <Wrapper>
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-2">
+                    <button
+                        onClick={handleCopy}
+                        className="p-2 hover:bg-[var(--glass-highlight)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                        title="Copy Quote"
+                    >
+                        {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+                    </button>
                     <button
                         onClick={handleShare}
                         disabled={sharing}
