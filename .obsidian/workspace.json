@@ -1,0 +1,205 @@
+{
+  "main": {
+    "id": "9e42d5030455ed1b",
+    "type": "split",
+    "children": [
+      {
+        "id": "4777d273526697c0",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "3a0fe3837ea42861",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "docs/adr/0010-import-book-matching-strategy.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "0010-import-book-matching-strategy"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "da3ac1f32d11035a",
+    "type": "split",
+    "children": [
+      {
+        "id": "494b5ffd38e299e1",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "54a0ed5767c7be0f",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "393b8acd3f6a8b8b",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "7ca0068f7f9a4bf7",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "826b6320179a191e",
+    "type": "split",
+    "children": [
+      {
+        "id": "b7687b16126beb4d",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6c5e06ae4c948472",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "docs/adr/0010-import-book-matching-strategy.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks"
+            }
+          },
+          {
+            "id": "da4b07ace7a2e1aa",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "docs/adr/0010-import-book-matching-strategy.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links"
+            }
+          },
+          {
+            "id": "e9150cfda0b6fcd5",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "6e32c5d9814ff05c",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "d8c688d3333a20a3",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "docs/adr/0010-import-book-matching-strategy.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "3a0fe3837ea42861",
+  "lastOpenFiles": [
+    "docs/adr/0009-kindle-sync-via-bookmarklet.md",
+    "docs/adr/0008-repo-visibility-public-with-personal-data.md",
+    "docs/adr/README.md",
+    "docs/adr/0010-import-book-matching-strategy.md",
+    "docs/adr/0007-quote-card-rendering-satori-plus-resvg.md",
+    "docs/adr/0006-cover-fetching-google-books-primary-open-library-fallback.md",
+    "docs/adr/0005-import-strategy-csv-only-no-kindle-scraping.md",
+    "docs/adr/0004-three-tier-gamification-system.md",
+    "docs/adr/0003-server-route-organization.md",
+    "docs/adr/0002-multi-author-multi-genre-data-model.md",
+    "docs/adr/0001-postgresql-with-drizzle-orm.md"
+  ]
+}
