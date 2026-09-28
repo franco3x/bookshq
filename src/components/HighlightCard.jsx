@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Share2, BookOpen, Loader, Copy, Check } from 'lucide-react';
+import { Share2, BookOpen, Loader, Copy, Check, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { formatQuote, highlightAuthorName } from '../utils/quote';
 
 export default function HighlightCard({ highlight, showBookInfo = true }) {
     const [sharing, setSharing] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [copyFailed, setCopyFailed] = useState(false);
 
     const handleShare = async (e) => {
         e.preventDefault(); // Prevent link navigation
@@ -45,11 +47,16 @@ export default function HighlightCard({ highlight, showBookInfo = true }) {
     const handleCopy = async (e) => {
         e.preventDefault(); // Prevent link navigation
         e.stopPropagation();
-        const authorName = highlight.author?.name || highlight.book?.author?.name || 'Unknown Author';
-        const text = `"${highlight.text}"\n\n— ${highlight.book?.title}, ${authorName}`;
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
+        const text = formatQuote(highlight.text, highlight.book?.title, highlightAuthorName(highlight));
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Copy failed:', err);
+            setCopyFailed(true);
+            setTimeout(() => setCopyFailed(false), 2000);
+        }
     };
 
     if (!highlight) return null;
@@ -73,9 +80,9 @@ export default function HighlightCard({ highlight, showBookInfo = true }) {
                     <button
                         onClick={handleCopy}
                         className="p-2 hover:bg-[var(--glass-highlight)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                        title="Copy Quote"
+                        title={copyFailed ? 'Copy failed' : 'Copy Quote'}
                     >
-                        {copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
+                        {copyFailed ? <X size={18} className="text-red-500" /> : copied ? <Check size={18} className="text-green-500" /> : <Copy size={18} />}
                     </button>
                     <button
                         onClick={handleShare}

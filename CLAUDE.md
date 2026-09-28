@@ -65,13 +65,12 @@ The *why* behind significant decisions lives in Architecture Decision Records un
 9. `d31f367` / `ad8adf0` **feat:** Analytics page — reading timeline chart, new charting components, dedicated API endpoint
 10. Earlier: merge portal, Goodreads import, achievements system, multi-author/multi-genre migrations, author demographics — see `git log` for full history (50 commits total)
 
-## Known issues / cleanup candidates
+## Known issues
 
-- **Likely bug in `server/services/gamification.js` (~lines 68, 85-86):** `genre`, `race`, `nationality` are jsonb *arrays* but are used as single object keys when awarding category XP on highlight import. Found 2026-09-27, not yet fixed. "Recalculate stats" (`recalculateStats()` in `server/services/stats.js`) rebuilds XP from scratch and is the reliable number.
-- **Merge candidate:** "The Millionaire Next Door (Millionaire Set Book 2)" (book 3642, 8 highlights, credited to William D. Danko only) is a second Kindle edition of book 2343 (credited to Thomas J. Stanley). No shared surname, so the sync couldn't match it. Merge via the Merge Portal.
+Things to be aware of when working in the code. Fixes and cleanup tasks are in [`TODO.md`](TODO.md).
+
+- **XP from highlight imports may be off:** `server/services/gamification.js` treats the `genre`/`race`/`nationality` arrays as single values (bug tracked in TODO.md). "Recalculate stats" (`recalculateStats()` in `server/services/stats.js`) rebuilds XP from scratch and is the reliable number.
 - **Books whose `asin` column holds a print ISBN** (e.g. `9780393254600`, from the Goodreads import) never match Kindle ASINs (`B0…`); they rely on fuzzy title+surname matching every sync. Works fine, just not exact.
-- **Cleanup:** `server/scripts/profile-authors.js` is a leftover benchmark script used while optimizing `/api/authors` (commit `6893191`). Safe to delete now that the optimization has shipped, unless you want to keep it around for future query profiling.
-- Stray local files seen in a recent working copy (`debug_absolute.log`, `debug_final.log`) aren't tracked in git — fine to `.gitignore` or delete if they reappear.
 
 ## Open questions / not yet decided
 
@@ -92,7 +91,7 @@ The *why* behind significant decisions lives in Architecture Decision Records un
 
 ## Spec: Quote Card Copy + Share
 
-Written 2026-08-14. Supersedes the old "Quote card Copy + Share" next-step bullet — this is the full design, ready to hand to Claude Code in scoped chunks. Not yet implemented.
+Written 2026-08-14. Supersedes the old "Quote card Copy + Share" next-step bullet — this is the full design, ready to hand to Claude Code in scoped chunks. **Status:** Copy is built (committed 2026-09-27); Share is not started. Remaining steps are tracked in `TODO.md`. The "Why / current state" notes below describe the codebase as of 2026-08-14.
 
 ### Why / current state
 
@@ -162,14 +161,14 @@ Go with satori + resvg first; only reach for headless-browser rendering if a spe
 - Should the last-used aspect ratio/style be remembered (e.g. in `user_settings`) so repeat sharers don't have to re-pick every time?
 - Whether "Cover Bleed" gracefully degrades for books with no cover image (relevant now that cover-fetcher sometimes can't find one) — probably falls back to "Minimal Light/Dark" automatically in that case.
 
-## Next steps (candidates, not yet prioritized)
+## Next steps
 
-- (Longer-term / open) iPhone access strategy
-- **Manual "Add Highlight" entry form** — type or paste a highlight directly into BooksHQ (pick or create the book, then enter the text and optional location). Originally proposed in [ADR 0005](docs/adr/0005-import-strategy-csv-only-no-kindle-scraping.md) as a workaround for missing Kindle highlights. Kindle Sync ([ADR 0009](docs/adr/0009-kindle-sync-via-bookmarklet.md)) now covers that case, but the form would still cover highlights from sources with no import path.
-- **Quote card Copy + Share** — see the full spec above. Suggested build order: (1) Copy button, frontend-only, no dependencies; (2) satori+resvg rendering pipeline with just one style preset (Minimal Light or Dark, simplest to get right) at one aspect ratio, to validate the technical approach end-to-end; (3) fill out remaining presets and aspect ratios; (4) the unified Share modal wiring both `HighlightCard.jsx` and `BookDetail.jsx`.
+All tasks (features, bugs, cleanup, testing) live in [`TODO.md`](TODO.md). Keep them there, not here.
 
 ## How to keep this doc useful
 
 Update this file at the end of any session where something meaningfully shipped, was discovered, or was decided — new features, bugs found, architecture decisions, abandoned approaches. Keep the "known issues" and "next steps" sections honest and current; stale entries here are worse than no doc at all.
+
+**Tasks go in `TODO.md`, not here.** Add new work there, check items off when done, and move finished items to its Done section.
 
 **Decisions go in ADRs, not here.** A significant or hard-to-reverse decision (including a decision *not* to build something) gets a new numbered file in `docs/adr/` plus a row in `docs/adr/README.md`; this file just links to it. Never rewrite an accepted ADR. If a decision is reversed, write a new ADR that supersedes it and change only the old one's Status line (as with 0005 → 0009).

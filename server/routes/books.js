@@ -69,6 +69,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// Must stay registered before POST /bulk/read: both match this path shape, and the
+// isNaN(bookId) -> next() guard below is what lets "bulk" fall through to that route.
 router.post('/:id/read', async (req, res, next) => {
     const bookId = parseInt(req.params.id);
 

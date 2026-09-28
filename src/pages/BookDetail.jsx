@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 import { api } from '../utils/api';
-import { ArrowLeft, Book as BookIcon, Trophy, Highlighter, Clock, CheckCircle, Star, Hash, Calendar, RefreshCw, Check } from 'lucide-react';
+import { ArrowLeft, Book as BookIcon, Trophy, Highlighter, Clock, CheckCircle, Star, Hash, Calendar, RefreshCw, Check, X } from 'lucide-react';
+import { formatQuote, bookAuthorName } from '../utils/quote';
 
 export default function BookDetail() {
     const { id } = useParams();
@@ -9,16 +10,19 @@ export default function BookDetail() {
     const [book, setBook] = useState(null);
     const [loading, setLoading] = useState(true);
     const [copiedId, setCopiedId] = useState(null);
+    const [copyFailedId, setCopyFailedId] = useState(null);
 
     const handleCopy = async (highlight) => {
-        console.log('DEBUG handleCopy called', highlight.id);
-        const authorNames = book.authors?.map(a => a.name).join(', ') || 'Unknown Author';
-        const text = `"${highlight.text}"\n\n— ${book.title}, ${authorNames}`;
-        await navigator.clipboard.writeText(text);
-        console.log('DEBUG about to setCopiedId', highlight.id);
-        setCopiedId(highlight.id);
-        console.log('DEBUG setCopiedId called');
-        setTimeout(() => setCopiedId(null), 2000);
+        const text = formatQuote(highlight.text, book.title, bookAuthorName(book));
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedId(highlight.id);
+            setTimeout(() => setCopiedId(null), 2000);
+        } catch (err) {
+            console.error('Copy failed:', err);
+            setCopyFailedId(highlight.id);
+            setTimeout(() => setCopyFailedId(null), 2000);
+        }
     };
 
     useEffect(() => {
@@ -633,7 +637,9 @@ export default function BookDetail() {
                                         onClick={() => handleCopy(highlight)}
                                         className="hover:text-[var(--text-primary)] transition-colors flex items-center gap-1"
                                     >
-                                        {copiedId === highlight.id ? (
+                                        {copyFailedId === highlight.id ? (
+                                            <><X size={14} className="text-red-500" /> Copy failed</>
+                                        ) : copiedId === highlight.id ? (
                                             <><Check size={14} className="text-green-500" /> Copied!</>
                                         ) : (
                                             'Copy'
