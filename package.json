@@ -9,6 +9,8 @@
     "server": "nodemon --exec tsx server/server.js",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "vitest",
+    "test:run": "vitest run",
     "preview": "vite preview",
     "db:generate": "drizzle-kit generate:pg",
     "db:migrate": "tsx server/database/migrate.ts",

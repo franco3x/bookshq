@@ -27,3 +27,4 @@ Write an ADR for decisions that are hard to reverse, shape the data model or arc
 | [0008](0008-repo-visibility-public-with-personal-data.md) | Keep the repository public, including personal reading data | Accepted |
 | [0009](0009-kindle-sync-via-bookmarklet.md) | Sync Kindle highlights via a bookmarklet on read.amazon.com/notebook | Accepted |
 | [0010](0010-import-book-matching-strategy.md) | Import book matching: ASIN, then exact title + author, then fuzzy title with a shared surname | Accepted |
+| [0011](0011-vitest-for-testing.md) | Use Vitest as the test runner, with GitHub Actions CI | Accepted |

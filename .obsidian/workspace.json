@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "TODO.md",
+                "file": "docs/adr/0011-vitest-for-testing.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "TODO"
+              "title": "0011-vitest-for-testing"
             }
           }
         ]
@@ -99,7 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "TODO.md",
+                "file": "docs/adr/0011-vitest-for-testing.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,7 +118,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "TODO.md",
+                "file": "docs/adr/0011-vitest-for-testing.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
@@ -161,7 +161,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "TODO.md",
+                "file": "docs/adr/0011-vitest-for-testing.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -190,11 +190,12 @@
   },
   "active": "3a0fe3837ea42861",
   "lastOpenFiles": [
+    "TODO.md",
+    "docs/adr/0011-vitest-for-testing.md",
     "server/scripts/verify-copy.mjs",
     "server/scripts/debug-copy.mjs",
     "src/utils/quote.js",
     "CLAUDE.md",
-    "TODO.md",
     "docs/adr/0010-import-book-matching-strategy.md",
     "docs/adr/0009-kindle-sync-via-bookmarklet.md",
     "docs/adr/0008-repo-visibility-public-with-personal-data.md",

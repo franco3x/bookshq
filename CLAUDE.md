@@ -26,6 +26,7 @@ The *why* behind significant decisions lives in Architecture Decision Records un
 - [0008](docs/adr/0008-repo-visibility-public-with-personal-data.md) Public repo including personal reading data
 - [0009](docs/adr/0009-kindle-sync-via-bookmarklet.md) Kindle sync via bookmarklet
 - [0010](docs/adr/0010-import-book-matching-strategy.md) Import book matching (ASIN → exact → fuzzy title + shared surname)
+- [0011](docs/adr/0011-vitest-for-testing.md) Vitest as the test runner, with GitHub Actions CI
 
 ## Data model (as of latest schema)
 
